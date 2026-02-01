@@ -66,3 +66,12 @@ export interface ScheduleParams {
     w2: number; // Weight for opponent count standard deviation
   };
 }
+
+/**
+ * Progress information during schedule generation (evaluation-based)
+ */
+export interface GenerationProgress {
+  currentEvaluations: number;  // Number of evaluations completed so far
+  totalEvaluations: number;    // Total number of evaluations to perform
+  percentage: number;          // Progress percentage (0-100)
+}

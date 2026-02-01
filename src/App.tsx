@@ -1,4 +1,4 @@
-import { Container, Typography, Box, CircularProgress } from '@mui/material';
+import { Container, Typography, Box, LinearProgress } from '@mui/material';
 import { useScheduleGenerator } from './hooks/useScheduleGenerator';
 import { ScheduleForm } from './components/ScheduleForm';
 import { ScheduleTable } from './components/ScheduleTable';
@@ -6,7 +6,7 @@ import { EvaluationDisplay } from './components/EvaluationDisplay';
 import { PlayerStatsTable } from './components/PlayerStatsTable';
 
 function App() {
-  const { schedule, isGenerating, error, generate } = useScheduleGenerator();
+  const { schedule, isGenerating, progress, error, generate } = useScheduleGenerator();
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -22,10 +22,18 @@ function App() {
       {/* Input Form */}
       <ScheduleForm onGenerate={generate} isGenerating={isGenerating} />
 
-      {/* Loading State */}
+      {/* Loading State with Progress */}
       {isGenerating && (
-        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
-          <CircularProgress />
+        <Box sx={{ my: 4 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {progress
+              ? `評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
+              : '生成を準備中...'}
+          </Typography>
+          <LinearProgress
+            variant={progress ? 'determinate' : 'indeterminate'}
+            value={progress?.percentage || 0}
+          />
         </Box>
       )}
 
