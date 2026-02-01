@@ -9,6 +9,7 @@ import {
   Grid,
 } from '@mui/material';
 import type { ScheduleParams } from '../types/schedule';
+import { useBenchmarkCalibration } from '../hooks/useBenchmarkCalibration';
 
 interface ScheduleFormProps {
   onGenerate: (params: ScheduleParams) => void;
@@ -22,6 +23,9 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const [w1, setW1] = useState(1.0);
   const [w2, setW2] = useState(0.5);
 
+  // Dynamic calibration coefficient based on hardware performance
+  const { coefficient } = useBenchmarkCalibration();
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     onGenerate({
@@ -34,6 +38,33 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
 
   const isValid = players >= courts * 4;
   const errorMessage = !isValid ? `参加人数は ${courts * 4} 人以上が必要です` : '';
+
+  // Estimate generation time based on configuration
+  const estimateTime = (): string => {
+    if (!isValid) return '';
+
+    // Empirical formula based on complexity
+    // Base complexity grows exponentially with courts and players
+    const baseComplexity = Math.pow(players / 4, courts * 1.5);
+    const roundFactor = Math.max(rounds - 1, 1);
+
+    // Estimated seconds (calibrated dynamically based on hardware)
+    let seconds = (baseComplexity * roundFactor * coefficient);
+
+    // Format output
+    if (seconds < 1) {
+      return '< 1秒';
+    } else if (seconds < 60) {
+      return `約${Math.round(seconds)}秒`;
+    } else if (seconds < 300) {
+      const minutes = Math.round(seconds / 60);
+      return `約${minutes}分`;
+    } else {
+      return '5分以上';
+    }
+  };
+
+  const estimatedTime = estimateTime();
 
   return (
     <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
@@ -131,7 +162,11 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
               fullWidth
               disabled={!isValid || isGenerating}
             >
-              {isGenerating ? '生成中...' : 'スケジュール生成'}
+              {isGenerating
+                ? '生成中...'
+                : estimatedTime
+                ? `スケジュール生成 (${estimatedTime})`
+                : 'スケジュール生成'}
             </Button>
           </Grid>
         </Grid>
