@@ -133,6 +133,8 @@ async function findBestNextRoundAsync(
   let bestScore = Infinity;
   let evaluationCount = 0;
 
+  const BATCH_SIZE = 100; // Yield control to UI thread every 100 evaluations
+
   // Iterate through all permutations
   do {
     // Only evaluate normalized arrangements (skip duplicates)
@@ -156,10 +158,18 @@ async function findBestNextRoundAsync(
         bestArrangement = arrangement.slice();
       }
 
-      // Report progress
-      onProgress(evaluationCount);
+      // Report progress and yield control periodically
+      if (evaluationCount % BATCH_SIZE === 0) {
+        onProgress(evaluationCount);
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
     }
   } while (nextPermutation(arrangement));
+
+  // Report final progress if not at batch boundary
+  if (evaluationCount % BATCH_SIZE !== 0) {
+    onProgress(evaluationCount);
+  }
 
   return arrangementToRound(bestArrangement!, courtsCount, currentRounds.length + 1);
 }
