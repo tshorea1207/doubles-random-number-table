@@ -17,8 +17,8 @@ interface ScheduleTableProps {
 }
 
 /**
- * Formats a match for display
- * Format: "p1,p2 : p3,p4"
+ * 試合を表示用にフォーマットする
+ * 形式: "p1,p2 : p3,p4"
  */
 function formatMatch(match: Match): string {
   return `${match.pairA.player1},${match.pairA.player2} : ${match.pairB.player1},${match.pairB.player2}`;

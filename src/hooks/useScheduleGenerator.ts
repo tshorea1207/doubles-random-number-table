@@ -5,7 +5,7 @@ import { isNormalized, arrangementToRound } from '../utils/normalization';
 import { evaluate } from '../utils/evaluation';
 
 /**
- * Calculates factorial (n!)
+ * 階乗（n!）を計算する
  */
 function factorial(n: number): number {
   if (n <= 1) return 1;
@@ -17,33 +17,33 @@ function factorial(n: number): number {
 }
 
 /**
- * Estimates the number of normalized arrangements for given parameters
+ * 与えられたパラメータに対する正規化された配列の数を推定する
  *
- * Formula: n! / ((2^courts) * (2^(2*courts)) * courts!)
- * - n! = total permutations
- * - 2^courts = pair order normalization
- * - 2^(2*courts) = match pair order normalization
- * - courts! = court order normalization
+ * 式: n! / ((2^courts) * (2^(2*courts)) * courts!)
+ * - n! = 全順列数
+ * - 2^courts = ペア順序の正規化
+ * - 2^(2*courts) = マッチペア順序の正規化
+ * - courts! = コート順序の正規化
  *
- * Example: 2 courts, 8 players
+ * 例: 2コート、8人
  * 8! / (2^2 * 2^4 * 2!) = 40320 / (4 * 16 * 2) = 40320 / 128 = 315
  */
 function estimateNormalizedCount(playersCount: number, courtsCount: number): number {
   const totalPermutations = factorial(playersCount);
-  const pairOrderDivisor = Math.pow(2, courtsCount * 2); // Each pair can swap
+  const pairOrderDivisor = Math.pow(2, courtsCount * 2); // 各ペアは入れ替え可能
   const courtOrderDivisor = factorial(courtsCount);
   return Math.floor(totalPermutations / (pairOrderDivisor * courtOrderDivisor));
 }
 
 /**
- * Creates the first round using the canonical normalized arrangement
+ * 標準的な正規化配列を使って最初のラウンドを作成する
  *
- * For N players, the first round is always [1, 2, 3, ..., N]
- * Example for 2 courts, 8 players: Court 1: (1,2):(3,4), Court 2: (5,6):(7,8)
+ * N人のプレイヤーの場合、最初のラウンドは常に [1, 2, 3, ..., N]
+ * 例: 2コート、8人の場合: コート1: (1,2):(3,4)、コート2: (5,6):(7,8)
  *
- * @param playersCount - Total number of players
- * @param courtsCount - Number of courts
- * @returns First round in canonical form
+ * @param playersCount - プレイヤーの総数
+ * @param courtsCount - コート数
+ * @returns 標準形式の最初のラウンド
  */
 function createFirstRound(playersCount: number, courtsCount: number): Round {
   const arrangement = createInitialArrangement(playersCount);
@@ -51,25 +51,25 @@ function createFirstRound(playersCount: number, courtsCount: number): Round {
 }
 
 /**
- * Finds the best next round using greedy algorithm
+ * 貪欲アルゴリズムを使用して最適な次のラウンドを探す
  *
- * Algorithm:
- * 1. Generate all permutations of [1, 2, ..., N]
- * 2. Filter to only normalized arrangements (e.g., 315 out of 40,320 for 2 courts, 8 players)
- * 3. For each normalized arrangement:
- *    - Create temporary round
- *    - Evaluate cumulative score with all previous rounds
- *    - Track arrangement with lowest score
- * 4. Return the best arrangement as a Round
+ * アルゴリズム:
+ * 1. [1, 2, ..., N] の全順列を生成
+ * 2. 正規化された配列のみをフィルタ（例: 2コート8人で40,320通りから315通り）
+ * 3. 正規化された各配列について:
+ *    - 一時的なラウンドを作成
+ *    - これまでの全ラウンドとの累積スコアを評価
+ *    - 最低スコアの配列を追跡
+ * 4. 最良の配列をラウンドとして返す
  *
- * @param currentRounds - All rounds generated so far
- * @param playersCount - Total number of players
- * @param courtsCount - Number of courts
- * @param weights - Evaluation weights
- * @returns Round with lowest cumulative evaluation score
+ * @param currentRounds - これまでに生成された全ラウンド
+ * @param playersCount - プレイヤーの総数
+ * @param courtsCount - コート数
+ * @param weights - 評価の重み
+ * @returns 累積評価スコアが最低のラウンド
  *
- * Time complexity: O(normalized_arrangements * rounds * players²)
- * For 2 courts, 8 players: O(315 * rounds * 64)
+ * 計算量: O(normalized_arrangements * rounds * players²)
+ * 2コート8人の場合: O(315 * rounds * 64)
  */
 function findBestNextRound(
   currentRounds: Round[],
@@ -81,45 +81,45 @@ function findBestNextRound(
   let bestArrangement: number[] | null = null;
   let bestScore = Infinity;
 
-  // Iterate through all permutations
+  // 全順列を反復
   do {
-    // Only evaluate normalized arrangements (skip duplicates)
+    // 正規化された配列のみを評価（重複をスキップ）
     if (isNormalized(arrangement, courtsCount)) {
-      // Create candidate round
+      // 候補ラウンドを作成
       const candidateRound = arrangementToRound(
-        arrangement.slice(), // Copy to avoid mutation
+        arrangement.slice(), // ミューテーションを避けるためコピー
         courtsCount,
         currentRounds.length + 1
       );
 
-      // Evaluate with this round added
+      // このラウンドを追加して評価
       const candidateRounds = [...currentRounds, candidateRound];
       const evaluation = evaluate(candidateRounds, playersCount, weights);
 
-      // Keep track of best
+      // 最良を追跡
       if (evaluation.totalScore < bestScore) {
         bestScore = evaluation.totalScore;
-        bestArrangement = arrangement.slice(); // Must copy, not reference
+        bestArrangement = arrangement.slice(); // 参照ではなくコピー
       }
     }
   } while (nextPermutation(arrangement));
 
-  // Convert best arrangement to Round
-  // TypeScript: bestArrangement is guaranteed to be non-null here
+  // 最良の配列をラウンドに変換
+  // TypeScript: bestArrangement はここで非 null であることが保証される
   return arrangementToRound(bestArrangement!, courtsCount, currentRounds.length + 1);
 }
 
 /**
- * Finds the best next round asynchronously with progress reporting
+ * 進捗報告付きで非同期に最適な次のラウンドを探す
  *
- * Similar to findBestNextRound but reports evaluation progress via callback
+ * findBestNextRound と同様だが、コールバック経由で評価の進捗を報告する
  *
- * @param currentRounds - All rounds generated so far
- * @param playersCount - Total number of players
- * @param courtsCount - Number of courts
- * @param weights - Evaluation weights
- * @param onProgress - Callback for progress updates (current evaluation count)
- * @returns Round with lowest cumulative evaluation score
+ * @param currentRounds - これまでに生成された全ラウンド
+ * @param playersCount - プレイヤーの総数
+ * @param courtsCount - コート数
+ * @param weights - 評価の重み
+ * @param onProgress - 進捗更新のコールバック（現在の評価回数）
+ * @returns 累積評価スコアが最低のラウンド
  */
 async function findBestNextRoundAsync(
   currentRounds: Round[],
@@ -133,32 +133,32 @@ async function findBestNextRoundAsync(
   let bestScore = Infinity;
   let evaluationCount = 0;
 
-  const BATCH_SIZE = 100; // Yield control to UI thread every 100 evaluations
+  const BATCH_SIZE = 100; // 100評価ごとにUIスレッドに制御を譲る
 
-  // Iterate through all permutations
+  // 全順列を反復
   do {
-    // Only evaluate normalized arrangements (skip duplicates)
+    // 正規化された配列のみを評価（重複をスキップ）
     if (isNormalized(arrangement, courtsCount)) {
       evaluationCount++;
 
-      // Create candidate round
+      // 候補ラウンドを作成
       const candidateRound = arrangementToRound(
         arrangement.slice(),
         courtsCount,
         currentRounds.length + 1
       );
 
-      // Evaluate with this round added
+      // このラウンドを追加して評価
       const candidateRounds = [...currentRounds, candidateRound];
       const evaluation = evaluate(candidateRounds, playersCount, weights);
 
-      // Keep track of best
+      // 最良を追跡
       if (evaluation.totalScore < bestScore) {
         bestScore = evaluation.totalScore;
         bestArrangement = arrangement.slice();
       }
 
-      // Report progress and yield control periodically
+      // 定期的に進捗を報告し制御を譲る
       if (evaluationCount % BATCH_SIZE === 0) {
         onProgress(evaluationCount);
         await new Promise(resolve => setTimeout(resolve, 0));
@@ -166,7 +166,7 @@ async function findBestNextRoundAsync(
     }
   } while (nextPermutation(arrangement));
 
-  // Report final progress if not at batch boundary
+  // バッチ境界でない場合、最終進捗を報告
   if (evaluationCount % BATCH_SIZE !== 0) {
     onProgress(evaluationCount);
   }
@@ -175,20 +175,20 @@ async function findBestNextRoundAsync(
 }
 
 /**
- * Generates an optimized doubles schedule using greedy sequential construction
+ * 貪欲逐次構築法を使用して最適化されたダブルススケジュールを生成する
  *
- * Algorithm:
- * 1. Fix first round to canonical normalized form
- * 2. For each subsequent round:
- *    - Evaluate all normalized arrangements
- *    - Select the one with lowest cumulative score
- * 3. Return complete schedule with final evaluation
+ * アルゴリズム:
+ * 1. 最初のラウンドを標準的な正規化形式に固定
+ * 2. 後続の各ラウンドについて:
+ *    - 全ての正規化配列を評価
+ *    - 累積スコアが最低のものを選択
+ * 3. 最終評価付きの完全なスケジュールを返す
  *
- * Note: This is a greedy algorithm and does not guarantee global optimum,
- * but typically produces good solutions in reasonable time.
+ * 注意: これは貪欲アルゴリズムなので大域最適解を保証しないが、
+ * 通常は妥当な時間内に良い解を生成する。
  *
- * @param params - Schedule generation parameters
- * @returns Complete schedule with evaluation metrics
+ * @param params - スケジュール生成パラメータ
+ * @returns 評価指標付きの完全なスケジュール
  *
  * @example
  * generateSchedule({
@@ -197,28 +197,28 @@ async function findBestNextRoundAsync(
  *   roundsCount: 7,
  *   weights: { w1: 1.0, w2: 0.5 }
  * })
- * // Returns schedule with ~315 * 6 = 1,890 evaluations
- * // Generation time: < 1 second
+ * // 約 315 * 6 = 1,890 回の評価を含むスケジュールを返す
+ * // 生成時間: 1秒未満
  *
- * Time complexity: O(rounds * normalized_arrangements * rounds * players²)
- * For 2 courts, 8 players, 7 rounds: O(7 * 315 * 7 * 64) ≈ 1 million operations
+ * 計算量: O(rounds * normalized_arrangements * rounds * players²)
+ * 2コート8人7ラウンドの場合: O(7 * 315 * 7 * 64) ≈ 100万操作
  */
 export function generateSchedule(params: ScheduleParams): Schedule {
   const { courtsCount, playersCount, roundsCount, weights } = params;
 
   const rounds: Round[] = [];
 
-  // Step 1: Create first round (normalized base case)
+  // ステップ1: 最初のラウンドを作成（正規化された基本ケース）
   const firstRound = createFirstRound(playersCount, courtsCount);
   rounds.push(firstRound);
 
-  // Step 2: Generate subsequent rounds using greedy approach
+  // ステップ2: 貪欲アプローチで後続ラウンドを生成
   for (let r = 2; r <= roundsCount; r++) {
     const bestRound = findBestNextRound(rounds, playersCount, courtsCount, weights);
     rounds.push(bestRound);
   }
 
-  // Step 3: Calculate final evaluation
+  // ステップ3: 最終評価を計算
   const evaluation = evaluate(rounds, playersCount, weights);
 
   return {
@@ -230,11 +230,11 @@ export function generateSchedule(params: ScheduleParams): Schedule {
 }
 
 /**
- * Generates schedule asynchronously with progress reporting
+ * 進捗報告付きで非同期にスケジュールを生成する
  *
- * @param params - Schedule generation parameters
- * @param onProgress - Callback for progress updates
- * @returns Complete schedule with evaluation metrics
+ * @param params - スケジュール生成パラメータ
+ * @param onProgress - 進捗更新のコールバック
+ * @returns 評価指標付きの完全なスケジュール
  */
 export async function generateScheduleAsync(
   params: ScheduleParams,
@@ -244,25 +244,25 @@ export async function generateScheduleAsync(
 
   const rounds: Round[] = [];
 
-  // Calculate total evaluations
+  // 総評価回数を計算
   const normalizedCount = estimateNormalizedCount(playersCount, courtsCount);
   const totalEvaluations = normalizedCount * (roundsCount - 1);
   let currentEvaluations = 0;
 
-  // Step 1: Create first round (normalized base case)
+  // ステップ1: 最初のラウンドを作成（正規化された基本ケース）
   const firstRound = createFirstRound(playersCount, courtsCount);
   rounds.push(firstRound);
 
-  // Report initial progress
+  // 初期進捗を報告
   onProgress({
     currentEvaluations: 0,
     totalEvaluations,
     percentage: 0
   });
 
-  // Step 2: Generate subsequent rounds using greedy approach
+  // ステップ2: 貪欲アプローチで後続ラウンドを生成
   for (let r = 2; r <= roundsCount; r++) {
-    // Yield to UI thread between rounds
+    // ラウンド間でUIスレッドに譲る
     await new Promise(resolve => setTimeout(resolve, 0));
 
     const bestRound = await findBestNextRoundAsync(
@@ -271,7 +271,7 @@ export async function generateScheduleAsync(
       courtsCount,
       weights,
       (roundEvaluations) => {
-        // Update progress for this round
+        // このラウンドの進捗を更新
         const prevRoundEvaluations = normalizedCount * (r - 2);
         currentEvaluations = prevRoundEvaluations + roundEvaluations;
         const percentage = Math.round((currentEvaluations / totalEvaluations) * 100);
@@ -287,10 +287,10 @@ export async function generateScheduleAsync(
     rounds.push(bestRound);
   }
 
-  // Step 3: Calculate final evaluation
+  // ステップ3: 最終評価を計算
   const evaluation = evaluate(rounds, playersCount, weights);
 
-  // Report completion
+  // 完了を報告
   onProgress({
     currentEvaluations: totalEvaluations,
     totalEvaluations,
@@ -306,17 +306,17 @@ export async function generateScheduleAsync(
 }
 
 /**
- * React hook for schedule generation with loading, progress, and error states
+ * ローディング、進捗、エラー状態を持つスケジュール生成用 React フック
  *
- * @returns Hook interface with schedule state, progress, and generate function
+ * @returns スケジュール状態、進捗、生成関数を含むフックインターフェース
  *
  * @example
  * const { schedule, isGenerating, progress, error, generate } = useScheduleGenerator();
  *
- * // Trigger generation
+ * // 生成をトリガー
  * generate({ courtsCount: 2, playersCount: 8, roundsCount: 7, weights: { w1: 1.0, w2: 0.5 } });
  *
- * // Display progress
+ * // 進捗を表示
  * if (isGenerating && progress) {
  *   return <Progress value={progress.percentage} label={`評価 ${progress.currentEvaluations} / ${progress.totalEvaluations}`} />;
  * }
@@ -334,7 +334,7 @@ export function useScheduleGenerator() {
     setError(null);
     setProgress(null);
 
-    // Run async generation with progress updates
+    // 進捗更新付きで非同期生成を実行
     generateScheduleAsync(params, (progressUpdate) => {
       setProgress(progressUpdate);
     })
@@ -343,7 +343,7 @@ export function useScheduleGenerator() {
         setIsGenerating(false);
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : 'Generation failed');
+        setError(err instanceof Error ? err.message : '生成に失敗しました');
         setIsGenerating(false);
         setProgress(null);
       });

@@ -1,58 +1,58 @@
 import type { Round, Match } from '../types/schedule';
 
 /**
- * Checks if an arrangement satisfies normalization rules
+ * 配列が正規化ルールを満たしているか確認する
  *
- * Normalization rules reduce search space by eliminating equivalent arrangements:
- * 1. Within each pair: player1 < player2
- * 2. Between pairs in same court: min(pairA) < min(pairB)
- * 3. Between courts: min(court[i]) < min(court[i+1])
+ * 正規化ルールにより、等価な配列を排除して探索空間を削減する:
+ * 1. 各ペア内: player1 < player2
+ * 2. 同一コート内のペア間: min(pairA) < min(pairB)
+ * 3. コート間: min(court[i]) < min(court[i+1])
  *
- * For 2 courts, 8 players: reduces 8! = 40,320 arrangements to 315 valid ones
+ * 2コート8人の場合: 8! = 40,320 通りの配列が 315 通りに削減される
  *
- * @param arrangement - Array of player numbers (1-based), format: [p1,p2,p3,p4, p5,p6,p7,p8, ...]
- *                      where each group of 4 represents one court (2 pairs of 2 players)
- * @param courtsCount - Number of courts in the arrangement
- * @returns true if arrangement is normalized, false otherwise
+ * @param arrangement - プレイヤー番号の配列（1始まり）、形式: [p1,p2,p3,p4, p5,p6,p7,p8, ...]
+ *                      4人ごとのグループが1つのコートを表す（2人ずつのペアが2組）
+ * @param courtsCount - 配列に含まれるコート数
+ * @returns 配列が正規化されている場合は true、そうでなければ false
  *
  * @example
- * // Valid (normalized):
+ * // 有効（正規化済み）:
  * isNormalized([1,2,3,4, 5,6,7,8], 2) // true
- * // Court 1: (1,2):(3,4), Court 2: (5,6):(7,8)
+ * // コート1: (1,2):(3,4)、コート2: (5,6):(7,8)
  *
- * // Invalid (pair not sorted):
+ * // 無効（ペアがソートされていない）:
  * isNormalized([2,1,3,4, 5,6,7,8], 2) // false
- * // Violates rule 1: player1 should be < player2
+ * // ルール1違反: player1 は player2 より小さくなければならない
  *
- * // Invalid (pairs not sorted):
+ * // 無効（ペア間がソートされていない）:
  * isNormalized([3,4,1,2, 5,6,7,8], 2) // false
- * // Violates rule 2: min(3,4)=3 should be < min(1,2)=1
+ * // ルール2違反: min(3,4)=3 は min(1,2)=1 より小さくなければならない
  *
- * // Invalid (courts not sorted):
+ * // 無効（コート間がソートされていない）:
  * isNormalized([5,6,7,8, 1,2,3,4], 2) // false
- * // Violates rule 3: min(court1)=5 should be < min(court2)=1
+ * // ルール3違反: min(court1)=5 は min(court2)=1 より小さくなければならない
  *
- * Time complexity: O(courtsCount)
+ * 計算量: O(courtsCount)
  */
 export function isNormalized(arrangement: number[], courtsCount: number): boolean {
   const playersPerCourt = 4;
 
-  // Check each court
+  // 各コートをチェック
   for (let courtIdx = 0; courtIdx < courtsCount; courtIdx++) {
     const offset = courtIdx * playersPerCourt;
     const court = arrangement.slice(offset, offset + playersPerCourt);
 
-    // Rule 1: Within each pair, player1 < player2
-    if (court[0] >= court[1]) return false; // Pair A
-    if (court[2] >= court[3]) return false; // Pair B
+    // ルール1: 各ペア内で player1 < player2
+    if (court[0] >= court[1]) return false; // ペアA
+    if (court[2] >= court[3]) return false; // ペアB
 
-    // Rule 2: Between pairs in same court, min(pairA) < min(pairB)
+    // ルール2: 同一コート内のペア間で min(pairA) < min(pairB)
     const minPairA = Math.min(court[0], court[1]);
     const minPairB = Math.min(court[2], court[3]);
     if (minPairA >= minPairB) return false;
   }
 
-  // Rule 3: Between courts, min(court[i]) < min(court[i+1])
+  // ルール3: コート間で min(court[i]) < min(court[i+1])
   if (courtsCount > 1) {
     for (let i = 0; i < courtsCount - 1; i++) {
       const offset1 = i * playersPerCourt;
@@ -69,16 +69,16 @@ export function isNormalized(arrangement: number[], courtsCount: number): boolea
 }
 
 /**
- * Converts an arrangement array to a Round object
+ * 配列を Round オブジェクトに変換する
  *
- * @param arrangement - Array of player numbers in format [p1,p2,p3,p4, p5,p6,p7,p8, ...]
- * @param courtsCount - Number of courts
- * @param roundNumber - Round number (1-based)
- * @returns Round object with matches
+ * @param arrangement - [p1,p2,p3,p4, p5,p6,p7,p8, ...] 形式のプレイヤー番号配列
+ * @param courtsCount - コート数
+ * @param roundNumber - ラウンド番号（1始まり）
+ * @returns マッチを含む Round オブジェクト
  *
  * @example
  * arrangementToRound([1,2,3,4, 5,6,7,8], 2, 1)
- * // Returns:
+ * // 戻り値:
  * // {
  * //   roundNumber: 1,
  * //   matches: [
@@ -87,7 +87,7 @@ export function isNormalized(arrangement: number[], courtsCount: number): boolea
  * //   ]
  * // }
  *
- * Time complexity: O(courtsCount)
+ * 計算量: O(courtsCount)
  */
 export function arrangementToRound(
   arrangement: number[],

@@ -32,7 +32,7 @@ function App() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Header */}
+      {/* ヘッダー */}
       <Typography variant="h3" component="h1" gutterBottom>
         テニス ダブルス組み合わせ最適化
       </Typography>
@@ -41,10 +41,10 @@ function App() {
         貪欲法アルゴリズムを使用して、公平なダブルスの対戦表を自動生成します
       </Typography>
 
-      {/* Input Form */}
+      {/* 入力フォーム */}
       <ScheduleForm onGenerate={generate} isGenerating={isGenerating} />
 
-      {/* Loading State with Progress */}
+      {/* 進捗付きローディング状態 */}
       {isGenerating && (
         <Box sx={{ my: 4 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -59,14 +59,14 @@ function App() {
         </Box>
       )}
 
-      {/* Error State */}
+      {/* エラー状態 */}
       {error && (
         <Typography color="error" sx={{ my: 2 }}>
           エラー: {error}
         </Typography>
       )}
 
-      {/* Results */}
+      {/* 結果 */}
       {schedule && !isGenerating && (
         <>
           <EvaluationDisplay evaluation={schedule.evaluation} />

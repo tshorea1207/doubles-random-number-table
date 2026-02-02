@@ -1,19 +1,19 @@
 /**
- * Type definitions for tennis doubles schedule generation
+ * テニスダブルススケジュール生成の型定義
  */
 
 /**
- * Represents a pair of players in a doubles match
- * Invariant: player1 < player2 (normalized)
+ * ダブルスの試合におけるペア（2人のプレイヤー）
+ * 不変条件: player1 < player2（正規化済み）
  */
 export interface Pair {
-  player1: number; // Player number (1-based)
-  player2: number; // Player number (1-based)
+  player1: number; // プレイヤー番号（1始まり）
+  player2: number; // プレイヤー番号（1始まり）
 }
 
 /**
- * Represents a match on one court (2 pairs facing each other)
- * Invariant: min(pairA) < min(pairB) (normalized)
+ * 1コートでの試合（2ペアが対戦）
+ * 不変条件: min(pairA) < min(pairB)（正規化済み）
  */
 export interface Match {
   pairA: Pair;
@@ -21,57 +21,57 @@ export interface Match {
 }
 
 /**
- * Represents all matches in a single round
+ * 1ラウンドの全試合
  */
 export interface Round {
-  roundNumber: number; // 1-based round number
-  matches: Match[]; // One match per court, sorted by minimum player number
+  roundNumber: number; // ラウンド番号（1始まり）
+  matches: Match[]; // コートごとに1試合、最小プレイヤー番号でソート済み
 }
 
 /**
- * Evaluation metrics for a schedule
+ * スケジュールの評価指標
  */
 export interface Evaluation {
-  pairStdDev: number;   // Standard deviation of pair counts
-  oppoStdDev: number;   // Standard deviation of opponent counts
-  totalScore: number;   // Weighted sum: pairStdDev * w1 + oppoStdDev * w2
+  pairStdDev: number;   // ペア回数の標準偏差
+  oppoStdDev: number;   // 対戦回数の標準偏差
+  totalScore: number;   // 重み付き合計: pairStdDev * w1 + oppoStdDev * w2
 }
 
 /**
- * Complete schedule for a tournament
+ * 大会の完全なスケジュール
  */
 export interface Schedule {
-  courts: number;       // Number of courts
-  players: number;      // Total number of players
-  rounds: Round[];      // All rounds in the schedule
-  evaluation: Evaluation; // Quality metrics
+  courts: number;       // コート数
+  players: number;      // プレイヤーの総数
+  rounds: Round[];      // スケジュールの全ラウンド
+  evaluation: Evaluation; // 品質指標
 }
 
 /**
- * Matrix for counting pair/opponent occurrences
- * CountMatrix[i][j] = number of times player i+1 and player j+1 paired/opposed
- * Note: Player numbers are 1-based, array indices are 0-based
+ * ペア/対戦回数のカウント行列
+ * CountMatrix[i][j] = プレイヤー i+1 と j+1 がペアを組んだ/対戦した回数
+ * 注意: プレイヤー番号は1始まり、配列インデックスは0始まり
  */
 export type CountMatrix = number[][];
 
 /**
- * Parameters for schedule generation
+ * スケジュール生成のパラメータ
  */
 export interface ScheduleParams {
   courtsCount: number;
   playersCount: number;
   roundsCount: number;
   weights: {
-    w1: number; // Weight for pair count standard deviation
-    w2: number; // Weight for opponent count standard deviation
+    w1: number; // ペア回数の標準偏差の重み
+    w2: number; // 対戦回数の標準偏差の重み
   };
 }
 
 /**
- * Progress information during schedule generation (evaluation-based)
+ * スケジュール生成中の進捗情報（評価ベース）
  */
 export interface GenerationProgress {
-  currentEvaluations: number;  // Number of evaluations completed so far
-  totalEvaluations: number;    // Total number of evaluations to perform
-  percentage: number;          // Progress percentage (0-100)
+  currentEvaluations: number;  // これまでに完了した評価回数
+  totalEvaluations: number;    // 実行予定の総評価回数
+  percentage: number;          // 進捗率（0-100）
 }

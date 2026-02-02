@@ -9,11 +9,11 @@ interface EvaluationDisplayProps {
 export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
   const isIdeal = evaluation.pairStdDev === 0 && evaluation.oppoStdDev === 0;
 
-  // Determine quality color based on total score
+  // 総合スコアに基づいて品質の色を決定
   const getQualityColor = (score: number): string => {
-    if (score < 0.5) return '#4caf50'; // Green - Excellent
-    if (score < 1.0) return '#ff9800'; // Orange - Good
-    return '#f44336'; // Red - Poor
+    if (score < 0.5) return '#4caf50'; // 緑 - 優秀
+    if (score < 1.0) return '#ff9800'; // オレンジ - 良好
+    return '#f44336'; // 赤 - 要改善
   };
 
   return (
@@ -32,7 +32,7 @@ export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
       )}
 
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
-        {/* Pair Standard Deviation */}
+        {/* ペア回数の標準偏差 */}
         <Box>
           <Typography variant="body2" color="text.secondary">
             ペア回数の標準偏差
@@ -42,7 +42,7 @@ export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
           </Typography>
         </Box>
 
-        {/* Opponent Standard Deviation */}
+        {/* 対戦回数の標準偏差 */}
         <Box>
           <Typography variant="body2" color="text.secondary">
             対戦回数の標準偏差
@@ -52,7 +52,7 @@ export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
           </Typography>
         </Box>
 
-        {/* Total Score */}
+        {/* 総合スコア */}
         <Box>
           <Typography variant="body2" color="text.secondary">
             総合評価スコア
@@ -66,7 +66,7 @@ export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
         </Box>
       </Box>
 
-      {/* Explanation */}
+      {/* 説明 */}
       <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
         <Typography variant="caption" color="text.secondary">
           値が小さいほど公平な組み合わせです。理想解は両方の標準偏差が 0 になります。

@@ -23,7 +23,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const [w1, setW1] = useState(1.0);
   const [w2, setW2] = useState(0.5);
 
-  // Dynamic calibration coefficient based on hardware performance
+  // ハードウェア性能に基づく動的キャリブレーション係数
   const { coefficient } = useBenchmarkCalibration();
 
   const handleSubmit = (e: FormEvent) => {
@@ -39,19 +39,19 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const isValid = players >= courts * 4;
   const errorMessage = !isValid ? `参加人数は ${courts * 4} 人以上が必要です` : '';
 
-  // Estimate generation time based on configuration
+  // 設定に基づいて生成時間を推定
   const estimateTime = (): string => {
     if (!isValid) return '';
 
-    // Empirical formula based on complexity
-    // Base complexity grows exponentially with courts and players
+    // 計算量に基づく経験式
+    // 基本計算量はコート数とプレイヤー数に対して指数的に増加
     const baseComplexity = Math.pow(players / 4, courts * 1.5);
     const roundFactor = Math.max(rounds - 1, 1);
 
-    // Estimated seconds (calibrated dynamically based on hardware)
+    // 推定秒数（ハードウェアに基づいて動的にキャリブレーション）
     let seconds = (baseComplexity * roundFactor * coefficient);
 
-    // Format output
+    // 出力をフォーマット
     if (seconds < 1) {
       return '< 1秒';
     } else if (seconds < 60) {
@@ -74,7 +74,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
 
       <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
-          {/* Courts */}
+          {/* コート数 */}
           <Grid item xs={12} sm={4}>
             <TextField
               label="コート数"
@@ -87,7 +87,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* Players */}
+          {/* 参加人数 */}
           <Grid item xs={12} sm={4}>
             <TextField
               label="参加人数"
@@ -101,7 +101,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* Rounds */}
+          {/* ラウンド数 */}
           <Grid item xs={12} sm={4}>
             <TextField
               label="ラウンド数"
@@ -114,7 +114,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* Weight W1 */}
+          {/* 重み W1 */}
           <Grid item xs={12} sm={6}>
             <Typography gutterBottom>
               重み W1 (ペア回数): {w1.toFixed(1)}
@@ -133,7 +133,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* Weight W2 */}
+          {/* 重み W2 */}
           <Grid item xs={12} sm={6}>
             <Typography gutterBottom>
               重み W2 (対戦回数): {w2.toFixed(1)}
@@ -152,7 +152,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* Submit Button */}
+          {/* 送信ボタン */}
           <Grid item xs={12}>
             <Button
               type="submit"
@@ -172,7 +172,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
         </Grid>
       </form>
 
-      {/* Info Message */}
+      {/* 情報メッセージ */}
       <Box sx={{ mt: 2 }}>
         <Typography variant="caption" color="text.secondary">
           推奨: 2面コート。3面以上は計算時間が増加します。

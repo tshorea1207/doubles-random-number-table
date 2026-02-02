@@ -20,8 +20,8 @@ interface PlayerStatsTableProps {
 }
 
 /**
- * Renders a count matrix as a table
- * Only shows upper triangle (i < j) to avoid redundancy in symmetric matrix
+ * カウント行列をテーブルとして描画する
+ * 対称行列の冗長性を避けるため上三角（i < j）のみ表示
  */
 function renderMatrix(matrix: CountMatrix, title: string, playersCount: number) {
   return (
@@ -52,11 +52,11 @@ function renderMatrix(matrix: CountMatrix, title: string, playersCount: number) 
                   <strong>{i + 1}</strong>
                 </TableCell>
                 {row.map((count, j) => {
-                  // Only show upper triangle (i < j)
-                  // Diagonal and lower triangle shown as '-'
+                  // 上三角（i < j）のみ表示
+                  // 対角線と下三角は '-' として表示
                   const displayValue = i < j ? count : '-';
 
-                  // Color intensity based on count
+                  // カウントに基づく色の濃さ
                   const bgColor =
                     i < j ? `rgba(25, 118, 210, ${Math.min(count * 0.15, 0.7)})` : 'grey.200';
 
@@ -85,7 +85,7 @@ function renderMatrix(matrix: CountMatrix, title: string, playersCount: number) 
 export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
   const [tabValue, setTabValue] = useState(0);
 
-  // Calculate count matrices
+  // カウント行列を計算
   const pairCounts = initializeCountMatrix(schedule.players);
   const oppoCounts = initializeCountMatrix(schedule.players);
 
@@ -111,7 +111,7 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
           renderMatrix(oppoCounts, 'プレイヤー間の対戦回数', schedule.players)}
       </Box>
 
-      {/* Legend */}
+      {/* 凡例 */}
       <Box sx={{ p: 2, pt: 1 }}>
         <Typography variant="caption" color="text.secondary">
           上三角のみ表示（対称行列のため）。色が濃いほど回数が多いです。
