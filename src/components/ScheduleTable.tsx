@@ -12,6 +12,8 @@ import type { Schedule, Match } from '../types/schedule';
 
 interface ScheduleTableProps {
   schedule: Schedule;
+  completedMatches: Set<string>;
+  onToggleComplete: (matchId: string) => void;
 }
 
 /**
@@ -22,7 +24,7 @@ function formatMatch(match: Match): string {
   return `${match.pairA.player1},${match.pairA.player2} : ${match.pairB.player1},${match.pairB.player2}`;
 }
 
-export function ScheduleTable({ schedule }: ScheduleTableProps) {
+export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: ScheduleTableProps) {
   return (
     <Paper elevation={3} sx={{ mb: 3 }}>
       <Typography variant="h6" sx={{ p: 2 }}>
@@ -45,18 +47,33 @@ export function ScheduleTable({ schedule }: ScheduleTableProps) {
           </TableHead>
 
           <TableBody>
-            {schedule.rounds.map((round) => (
-              <TableRow key={round.roundNumber}>
-                <TableCell>
-                  <strong>{round.roundNumber}</strong>
-                </TableCell>
-                {round.matches.map((match, idx) => (
-                  <TableCell key={idx} align="center">
-                    {formatMatch(match)}
+            {schedule.rounds.map((round) => {
+              const roundId = `${round.roundNumber}`;
+              const isCompleted = completedMatches.has(roundId);
+              return (
+                <TableRow
+                  key={round.roundNumber}
+                  onClick={() => onToggleComplete(roundId)}
+                  sx={{
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    backgroundColor: isCompleted ? '#e0e0e0' : 'inherit',
+                    '&:hover': {
+                      backgroundColor: isCompleted ? '#d0d0d0' : '#f5f5f5',
+                    },
+                  }}
+                >
+                  <TableCell>
+                    <strong>{round.roundNumber}</strong>
                   </TableCell>
-                ))}
-              </TableRow>
-            ))}
+                  {round.matches.map((match, idx) => (
+                    <TableCell key={idx} align="center">
+                      {formatMatch(match)}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>

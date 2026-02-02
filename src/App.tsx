@@ -1,3 +1,4 @@
+import { useState, useCallback, useEffect } from 'react';
 import { Container, Typography, Box, LinearProgress } from '@mui/material';
 import { useScheduleGenerator } from './hooks/useScheduleGenerator';
 import { ScheduleForm } from './components/ScheduleForm';
@@ -7,6 +8,27 @@ import { PlayerStatsTable } from './components/PlayerStatsTable';
 
 function App() {
   const { schedule, isGenerating, progress, error, generate } = useScheduleGenerator();
+  const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
+
+  // トグルハンドラー
+  const handleToggleComplete = useCallback((matchId: string) => {
+    setCompletedMatches(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(matchId)) {
+        newSet.delete(matchId);
+      } else {
+        newSet.add(matchId);
+      }
+      return newSet;
+    });
+  }, []);
+
+  // 生成開始時に消化済み状態をリセット
+  useEffect(() => {
+    if (isGenerating) {
+      setCompletedMatches(new Set());
+    }
+  }, [isGenerating]);
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -48,7 +70,11 @@ function App() {
       {schedule && !isGenerating && (
         <>
           <EvaluationDisplay evaluation={schedule.evaluation} />
-          <ScheduleTable schedule={schedule} />
+          <ScheduleTable
+            schedule={schedule}
+            completedMatches={completedMatches}
+            onToggleComplete={handleToggleComplete}
+          />
           <PlayerStatsTable schedule={schedule} />
         </>
       )}
