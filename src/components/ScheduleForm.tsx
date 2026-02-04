@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import {
   Box,
   TextField,
@@ -8,8 +8,10 @@ import {
   Paper,
   Grid,
 } from '@mui/material';
-import type { ScheduleParams } from '../types/schedule';
+import type { ScheduleParams, FixedPair } from '../types/schedule';
 import { useBenchmarkCalibration } from '../hooks/useBenchmarkCalibration';
+import { FixedPairsInput } from './FixedPairsInput';
+import { validateFixedPairs } from '../utils/fixedPairs';
 
 interface ScheduleFormProps {
   onGenerate: (params: ScheduleParams) => void;
@@ -22,9 +24,20 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const [rounds, setRounds] = useState(7);
   const [w1, setW1] = useState(1.0);
   const [w2, setW2] = useState(0.5);
+  const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
 
   // ハードウェア性能に基づく動的キャリブレーション係数
   const { coefficient } = useBenchmarkCalibration();
+
+  // 参加人数変更時に無効な固定ペアを削除
+  useEffect(() => {
+    const validPairs = fixedPairs.filter(
+      (fp) => fp.player1 <= players && fp.player2 <= players
+    );
+    if (validPairs.length !== fixedPairs.length) {
+      setFixedPairs(validPairs);
+    }
+  }, [players, fixedPairs]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -33,11 +46,15 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
       playersCount: players,
       roundsCount: rounds,
       weights: { w1, w2 },
+      fixedPairs,
     });
   };
 
-  const isValid = players >= courts * 4;
-  const errorMessage = !isValid ? `参加人数は ${courts * 4} 人以上が必要です` : '';
+  // バリデーション
+  const playersValid = players >= courts * 4;
+  const fixedPairsValidation = validateFixedPairs(fixedPairs, players, courts);
+  const isValid = playersValid && fixedPairsValidation.isValid;
+  const errorMessage = !playersValid ? `参加人数は ${courts * 4} 人以上が必要です` : '';
 
   // 設定に基づいて生成時間を推定
   const estimateTime = (): string => {
@@ -149,6 +166,16 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
                 { value: 0.5, label: '0.5' },
                 { value: 10, label: '10' },
               ]}
+            />
+          </Grid>
+
+          {/* 固定ペア */}
+          <Grid item xs={12}>
+            <FixedPairsInput
+              playersCount={players}
+              courtsCount={courts}
+              fixedPairs={fixedPairs}
+              onChange={setFixedPairs}
             />
           </Grid>
 
