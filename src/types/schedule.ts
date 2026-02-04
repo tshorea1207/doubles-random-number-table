@@ -3,6 +3,25 @@
  */
 
 /**
+ * 固定ペア（常に一緒にペアを組む2人のプレイヤー）
+ * 不変条件: player1 < player2（正規化済み）
+ * 用途: 夫婦、親子、初心者+経験者など
+ */
+export interface FixedPair {
+  player1: number; // プレイヤー番号（1始まり）、常に小さい方
+  player2: number; // プレイヤー番号（1始まり）、常に大きい方
+}
+
+/**
+ * 固定ペアのバリデーション結果
+ */
+export interface FixedPairsValidation {
+  isValid: boolean;
+  errorMessage?: string;
+  warnings?: string[];
+}
+
+/**
  * ダブルスの試合におけるペア（2人のプレイヤー）
  * 不変条件: player1 < player2（正規化済み）
  */
@@ -45,6 +64,7 @@ export interface Schedule {
   players: number;      // プレイヤーの総数
   rounds: Round[];      // スケジュールの全ラウンド
   evaluation: Evaluation; // 品質指標
+  fixedPairs: FixedPair[]; // 固定ペアのリスト
 }
 
 /**
@@ -65,6 +85,7 @@ export interface ScheduleParams {
     w1: number; // ペア回数の標準偏差の重み
     w2: number; // 対戦回数の標準偏差の重み
   };
+  fixedPairs: FixedPair[]; // 固定ペアのリスト
 }
 
 /**

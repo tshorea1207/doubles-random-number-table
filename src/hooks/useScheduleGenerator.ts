@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import type { Schedule, ScheduleParams, Round, GenerationProgress } from '../types/schedule';
+import type { Schedule, ScheduleParams, Round, GenerationProgress, FixedPair } from '../types/schedule';
 import { createInitialArrangement, nextPermutation } from '../utils/permutation';
 import { isNormalized, arrangementToRound } from '../utils/normalization';
 import { evaluate } from '../utils/evaluation';
+import { satisfiesFixedPairs } from '../utils/fixedPairs';
 
 /**
  * 階乗（n!）を計算する
@@ -38,16 +39,40 @@ function estimateNormalizedCount(playersCount: number, courtsCount: number): num
 /**
  * 標準的な正規化配列を使って最初のラウンドを作成する
  *
- * N人のプレイヤーの場合、最初のラウンドは常に [1, 2, 3, ..., N]
- * 例: 2コート、8人の場合: コート1: (1,2):(3,4)、コート2: (5,6):(7,8)
+ * 固定ペアがない場合:
+ *   N人のプレイヤーの場合、最初のラウンドは常に [1, 2, 3, ..., N]
+ *   例: 2コート、8人の場合: コート1: (1,2):(3,4)、コート2: (5,6):(7,8)
+ *
+ * 固定ペアがある場合:
+ *   固定ペア制約を満たす最初の正規化配列を探索
  *
  * @param playersCount - プレイヤーの総数
  * @param courtsCount - コート数
+ * @param fixedPairs - 固定ペアの配列
  * @returns 標準形式の最初のラウンド
+ * @throws 固定ペアを満たす配置が見つからない場合
  */
-function createFirstRound(playersCount: number, courtsCount: number): Round {
+function createFirstRound(
+  playersCount: number,
+  courtsCount: number,
+  fixedPairs: FixedPair[]
+): Round {
+  // 固定ペアがない場合は従来通り
+  if (fixedPairs.length === 0) {
+    const arrangement = createInitialArrangement(playersCount);
+    return arrangementToRound(arrangement, courtsCount, 1);
+  }
+
+  // 固定ペアがある場合: 最初の有効な配列を探索
   const arrangement = createInitialArrangement(playersCount);
-  return arrangementToRound(arrangement, courtsCount, 1);
+  do {
+    if (isNormalized(arrangement, courtsCount) &&
+        satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+      return arrangementToRound(arrangement.slice(), courtsCount, 1);
+    }
+  } while (nextPermutation(arrangement));
+
+  throw new Error('固定ペアを満たす配置が見つかりません');
 }
 
 /**
@@ -56,16 +81,18 @@ function createFirstRound(playersCount: number, courtsCount: number): Round {
  * アルゴリズム:
  * 1. [1, 2, ..., N] の全順列を生成
  * 2. 正規化された配列のみをフィルタ（例: 2コート8人で40,320通りから315通り）
- * 3. 正規化された各配列について:
+ * 3. 固定ペア制約を満たす配列のみをフィルタ
+ * 4. 各候補配列について:
  *    - 一時的なラウンドを作成
  *    - これまでの全ラウンドとの累積スコアを評価
  *    - 最低スコアの配列を追跡
- * 4. 最良の配列をラウンドとして返す
+ * 5. 最良の配列をラウンドとして返す
  *
  * @param currentRounds - これまでに生成された全ラウンド
  * @param playersCount - プレイヤーの総数
  * @param courtsCount - コート数
  * @param weights - 評価の重み
+ * @param fixedPairs - 固定ペアの配列
  * @returns 累積評価スコアが最低のラウンド
  *
  * 計算量: O(normalized_arrangements * rounds * players²)
@@ -75,7 +102,8 @@ function findBestNextRound(
   currentRounds: Round[],
   playersCount: number,
   courtsCount: number,
-  weights: { w1: number; w2: number }
+  weights: { w1: number; w2: number },
+  fixedPairs: FixedPair[]
 ): Round {
   const arrangement = createInitialArrangement(playersCount);
   let bestArrangement: number[] | null = null;
@@ -83,8 +111,9 @@ function findBestNextRound(
 
   // 全順列を反復
   do {
-    // 正規化された配列のみを評価（重複をスキップ）
-    if (isNormalized(arrangement, courtsCount)) {
+    // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
+    if (isNormalized(arrangement, courtsCount) &&
+        satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
       // 候補ラウンドを作成
       const candidateRound = arrangementToRound(
         arrangement.slice(), // ミューテーションを避けるためコピー
@@ -105,8 +134,10 @@ function findBestNextRound(
   } while (nextPermutation(arrangement));
 
   // 最良の配列をラウンドに変換
-  // TypeScript: bestArrangement はここで非 null であることが保証される
-  return arrangementToRound(bestArrangement!, courtsCount, currentRounds.length + 1);
+  if (!bestArrangement) {
+    throw new Error('固定ペアを満たす配置が見つかりません');
+  }
+  return arrangementToRound(bestArrangement, courtsCount, currentRounds.length + 1);
 }
 
 /**
@@ -118,6 +149,7 @@ function findBestNextRound(
  * @param playersCount - プレイヤーの総数
  * @param courtsCount - コート数
  * @param weights - 評価の重み
+ * @param fixedPairs - 固定ペアの配列
  * @param onProgress - 進捗更新のコールバック（現在の評価回数）
  * @returns 累積評価スコアが最低のラウンド
  */
@@ -126,6 +158,7 @@ async function findBestNextRoundAsync(
   playersCount: number,
   courtsCount: number,
   weights: { w1: number; w2: number },
+  fixedPairs: FixedPair[],
   onProgress: (evaluationCount: number) => void
 ): Promise<Round> {
   const arrangement = createInitialArrangement(playersCount);
@@ -137,8 +170,9 @@ async function findBestNextRoundAsync(
 
   // 全順列を反復
   do {
-    // 正規化された配列のみを評価（重複をスキップ）
-    if (isNormalized(arrangement, courtsCount)) {
+    // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
+    if (isNormalized(arrangement, courtsCount) &&
+        satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
       evaluationCount++;
 
       // 候補ラウンドを作成
@@ -171,16 +205,19 @@ async function findBestNextRoundAsync(
     onProgress(evaluationCount);
   }
 
-  return arrangementToRound(bestArrangement!, courtsCount, currentRounds.length + 1);
+  if (!bestArrangement) {
+    throw new Error('固定ペアを満たす配置が見つかりません');
+  }
+  return arrangementToRound(bestArrangement, courtsCount, currentRounds.length + 1);
 }
 
 /**
  * 貪欲逐次構築法を使用して最適化されたダブルススケジュールを生成する
  *
  * アルゴリズム:
- * 1. 最初のラウンドを標準的な正規化形式に固定
+ * 1. 最初のラウンドを標準的な正規化形式に固定（固定ペアがある場合は探索）
  * 2. 後続の各ラウンドについて:
- *    - 全ての正規化配列を評価
+ *    - 全ての正規化配列を評価（固定ペア制約を適用）
  *    - 累積スコアが最低のものを選択
  * 3. 最終評価付きの完全なスケジュールを返す
  *
@@ -195,7 +232,8 @@ async function findBestNextRoundAsync(
  *   courtsCount: 2,
  *   playersCount: 8,
  *   roundsCount: 7,
- *   weights: { w1: 1.0, w2: 0.5 }
+ *   weights: { w1: 1.0, w2: 0.5 },
+ *   fixedPairs: []
  * })
  * // 約 315 * 6 = 1,890 回の評価を含むスケジュールを返す
  * // 生成時間: 1秒未満
@@ -204,17 +242,17 @@ async function findBestNextRoundAsync(
  * 2コート8人7ラウンドの場合: O(7 * 315 * 7 * 64) ≈ 100万操作
  */
 export function generateSchedule(params: ScheduleParams): Schedule {
-  const { courtsCount, playersCount, roundsCount, weights } = params;
+  const { courtsCount, playersCount, roundsCount, weights, fixedPairs } = params;
 
   const rounds: Round[] = [];
 
-  // ステップ1: 最初のラウンドを作成（正規化された基本ケース）
-  const firstRound = createFirstRound(playersCount, courtsCount);
+  // ステップ1: 最初のラウンドを作成（正規化された基本ケース、固定ペア考慮）
+  const firstRound = createFirstRound(playersCount, courtsCount, fixedPairs);
   rounds.push(firstRound);
 
   // ステップ2: 貪欲アプローチで後続ラウンドを生成
   for (let r = 2; r <= roundsCount; r++) {
-    const bestRound = findBestNextRound(rounds, playersCount, courtsCount, weights);
+    const bestRound = findBestNextRound(rounds, playersCount, courtsCount, weights, fixedPairs);
     rounds.push(bestRound);
   }
 
@@ -226,6 +264,7 @@ export function generateSchedule(params: ScheduleParams): Schedule {
     players: playersCount,
     rounds,
     evaluation,
+    fixedPairs,
   };
 }
 
@@ -240,7 +279,7 @@ export async function generateScheduleAsync(
   params: ScheduleParams,
   onProgress: (progress: GenerationProgress) => void
 ): Promise<Schedule> {
-  const { courtsCount, playersCount, roundsCount, weights } = params;
+  const { courtsCount, playersCount, roundsCount, weights, fixedPairs } = params;
 
   const rounds: Round[] = [];
 
@@ -249,8 +288,8 @@ export async function generateScheduleAsync(
   const totalEvaluations = normalizedCount * (roundsCount - 1);
   let currentEvaluations = 0;
 
-  // ステップ1: 最初のラウンドを作成（正規化された基本ケース）
-  const firstRound = createFirstRound(playersCount, courtsCount);
+  // ステップ1: 最初のラウンドを作成（正規化された基本ケース、固定ペア考慮）
+  const firstRound = createFirstRound(playersCount, courtsCount, fixedPairs);
   rounds.push(firstRound);
 
   // 初期進捗を報告
@@ -270,7 +309,8 @@ export async function generateScheduleAsync(
       playersCount,
       courtsCount,
       weights,
-      (roundEvaluations) => {
+      fixedPairs,
+      (roundEvaluations: number) => {
         // このラウンドの進捗を更新
         const prevRoundEvaluations = normalizedCount * (r - 2);
         currentEvaluations = prevRoundEvaluations + roundEvaluations;
@@ -302,6 +342,7 @@ export async function generateScheduleAsync(
     players: playersCount,
     rounds,
     evaluation,
+    fixedPairs,
   };
 }
 

@@ -8,6 +8,7 @@ const BENCHMARK_CONFIG: ScheduleParams = {
   playersCount: 4,
   roundsCount: 2,
   weights: { w1: 1.0, w2: 0.5 },
+  fixedPairs: [],
 };
 
 const FALLBACK_COEFFICIENT = 0.002; // キャリブレーション失敗時のデフォルト係数
