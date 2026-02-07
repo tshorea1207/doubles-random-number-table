@@ -40,11 +40,12 @@ export interface Match {
 }
 
 /**
- * 1ラウンドの全試合
+ * 1ラウンドの全試合と休憩者
  */
 export interface Round {
   roundNumber: number; // ラウンド番号（1始まり）
   matches: Match[]; // コートごとに1試合、最小プレイヤー番号でソート済み
+  restingPlayers: number[]; // このラウンドで休憩するプレイヤー番号（昇順）
 }
 
 /**
@@ -53,7 +54,8 @@ export interface Round {
 export interface Evaluation {
   pairStdDev: number;   // ペア回数の標準偏差
   oppoStdDev: number;   // 対戦回数の標準偏差
-  totalScore: number;   // 重み付き合計: pairStdDev * w1 + oppoStdDev * w2
+  restStdDev: number;   // 休憩回数の標準偏差
+  totalScore: number;   // 重み付き合計: pairStdDev * w1 + oppoStdDev * w2 + restStdDev * w3
 }
 
 /**
@@ -84,9 +86,17 @@ export interface ScheduleParams {
   weights: {
     w1: number; // ペア回数の標準偏差の重み
     w2: number; // 対戦回数の標準偏差の重み
+    w3: number; // 休憩回数の標準偏差の重み
   };
   fixedPairs: FixedPair[]; // 固定ペアのリスト
 }
+
+/**
+ * 休憩回数カウント配列
+ * RestCounts[i] = プレイヤー i+1 の休憩回数
+ * 注意: プレイヤー番号は1始まり、配列インデックスは0始まり
+ */
+export type RestCounts = number[];
 
 /**
  * スケジュール生成中の進捗情報（評価ベース）

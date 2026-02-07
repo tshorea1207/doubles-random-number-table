@@ -7,7 +7,8 @@ interface EvaluationDisplayProps {
 }
 
 export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
-  const isIdeal = evaluation.pairStdDev === 0 && evaluation.oppoStdDev === 0;
+  const isIdeal = evaluation.pairStdDev === 0 && evaluation.oppoStdDev === 0 && evaluation.restStdDev === 0;
+  const hasRestingPlayers = evaluation.restStdDev > 0;
 
   // 総合スコアに基づいて品質の色を決定
   const getQualityColor = (score: number): string => {
@@ -31,7 +32,7 @@ export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
         />
       )}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 2 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: hasRestingPlayers ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 2 }}>
         {/* ペア回数の標準偏差 */}
         <Box>
           <Typography variant="body2" color="text.secondary">
@@ -51,6 +52,18 @@ export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
             {evaluation.oppoStdDev.toFixed(4)}
           </Typography>
         </Box>
+
+        {/* 休憩回数の標準偏差（休憩者がいる場合のみ表示） */}
+        {hasRestingPlayers && (
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              休憩回数の標準偏差
+            </Typography>
+            <Typography variant="h6" sx={{ mt: 1 }}>
+              {evaluation.restStdDev.toFixed(4)}
+            </Typography>
+          </Box>
+        )}
 
         {/* 総合スコア */}
         <Box>

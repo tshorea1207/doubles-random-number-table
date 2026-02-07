@@ -106,5 +106,49 @@ export function arrangementToRound(
     });
   }
 
-  return { roundNumber, matches };
+  return { roundNumber, matches, restingPlayers: [] };
+}
+
+/**
+ * 配列と休憩者を Round オブジェクトに変換する
+ *
+ * @param arrangement - [p1,p2,p3,p4, p5,p6,p7,p8, ...] 形式のプレイヤー番号配列
+ * @param courtsCount - コート数
+ * @param roundNumber - ラウンド番号（1始まり）
+ * @param restingPlayers - 休憩するプレイヤー番号の配列
+ * @returns マッチと休憩者を含む Round オブジェクト
+ *
+ * @example
+ * arrangementToRoundWithRest([1,2,3,4, 5,6,7,8], 2, 1, [9, 10])
+ * // 戻り値:
+ * // {
+ * //   roundNumber: 1,
+ * //   matches: [
+ * //     { pairA: {player1: 1, player2: 2}, pairB: {player1: 3, player2: 4} },
+ * //     { pairA: {player1: 5, player2: 6}, pairB: {player1: 7, player2: 8} }
+ * //   ],
+ * //   restingPlayers: [9, 10]
+ * // }
+ *
+ * 計算量: O(courtsCount)
+ */
+export function arrangementToRoundWithRest(
+  arrangement: number[],
+  courtsCount: number,
+  roundNumber: number,
+  restingPlayers: number[]
+): Round {
+  const matches: Match[] = [];
+
+  for (let courtIdx = 0; courtIdx < courtsCount; courtIdx++) {
+    const offset = courtIdx * 4;
+    const [p1, p2, p3, p4] = arrangement.slice(offset, offset + 4);
+
+    matches.push({
+      pairA: { player1: p1, player2: p2 },
+      pairB: { player1: p3, player2: p4 },
+    });
+  }
+
+  return { roundNumber, matches, restingPlayers: restingPlayers.slice().sort((a, b) => a - b) };
 }

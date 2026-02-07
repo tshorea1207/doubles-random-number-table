@@ -25,6 +25,11 @@ function formatMatch(match: Match): string {
 }
 
 export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: ScheduleTableProps) {
+  // 休憩者がいるかどうかを判定
+  const hasRestingPlayers = schedule.rounds.some(
+    (round) => round.restingPlayers && round.restingPlayers.length > 0
+  );
+
   return (
     <Paper elevation={3} sx={{ mb: 3 }}>
       <Typography variant="h6" sx={{ p: 2 }}>
@@ -43,6 +48,11 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: 
                   <strong>コート {i + 1}</strong>
                 </TableCell>
               ))}
+              {hasRestingPlayers && (
+                <TableCell align="center">
+                  <strong>休憩</strong>
+                </TableCell>
+              )}
             </TableRow>
           </TableHead>
 
@@ -71,6 +81,13 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: 
                       {formatMatch(match)}
                     </TableCell>
                   ))}
+                  {hasRestingPlayers && (
+                    <TableCell align="center" sx={{ color: 'text.secondary' }}>
+                      {round.restingPlayers && round.restingPlayers.length > 0
+                        ? round.restingPlayers.join(', ')
+                        : '-'}
+                    </TableCell>
+                  )}
                 </TableRow>
               );
             })}

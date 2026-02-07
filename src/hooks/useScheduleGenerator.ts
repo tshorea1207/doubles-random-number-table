@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import type { Schedule, ScheduleParams, Round, GenerationProgress, FixedPair } from '../types/schedule';
-import { createInitialArrangement, nextPermutation } from '../utils/permutation';
-import { isNormalized, arrangementToRound } from '../utils/normalization';
-import { evaluate } from '../utils/evaluation';
+import { createInitialArrangement, nextPermutation, generateRestingCandidates } from '../utils/permutation';
+import { isNormalized, arrangementToRoundWithRest } from '../utils/normalization';
+import { evaluate, initializeRestCounts, updateRestCounts } from '../utils/evaluation';
 import { satisfiesFixedPairs } from '../utils/fixedPairs';
 
 /**
@@ -18,30 +18,69 @@ function factorial(n: number): number {
 }
 
 /**
+ * 二項係数 C(n, k) を計算する
+ */
+function binomial(n: number, k: number): number {
+  if (k < 0 || k > n) return 0;
+  if (k === 0 || k === n) return 1;
+  let result = 1;
+  for (let i = 0; i < k; i++) {
+    result = result * (n - i) / (i + 1);
+  }
+  return Math.floor(result);
+}
+
+/**
  * 与えられたパラメータに対する正規化された配列の数を推定する
  *
- * 式: n! / ((2^courts) * (2^(2*courts)) * courts!)
- * - n! = 全順列数
- * - 2^courts = ペア順序の正規化
- * - 2^(2*courts) = マッチペア順序の正規化
- * - courts! = コート順序の正規化
+ * 休憩者なしの場合:
+ *   式: n! / ((2^courts) * (2^(2*courts)) * courts!)
+ *   - n! = 全順列数
+ *   - 2^courts = ペア順序の正規化
+ *   - 2^(2*courts) = マッチペア順序の正規化
+ *   - courts! = コート順序の正規化
  *
- * 例: 2コート、8人
+ * 休憩者ありの場合:
+ *   式: C(n, restCount) * playingCount! / divisor
+ *   - C(n, restCount) = 休憩者の選択肢
+ *   - playingCount = プレイする人数 = courts * 4
+ *
+ * 例: 2コート、8人（休憩なし）
  * 8! / (2^2 * 2^4 * 2!) = 40320 / (4 * 16 * 2) = 40320 / 128 = 315
+ *
+ * 例: 2コート、10人（2人休憩）
+ * C(10, 2) * 315 = 45 * 315 = 14,175
  */
 function estimateNormalizedCount(playersCount: number, courtsCount: number): number {
-  const totalPermutations = factorial(playersCount);
+  const playingCount = courtsCount * 4;
+  const restCount = playersCount - playingCount;
+
+  // プレイする人数に対する正規化配列数
+  const playingPermutations = factorial(playingCount);
   const pairOrderDivisor = Math.pow(2, courtsCount * 2); // 各ペアは入れ替え可能
   const courtOrderDivisor = factorial(courtsCount);
-  return Math.floor(totalPermutations / (pairOrderDivisor * courtOrderDivisor));
+  const normalizedPerSelection = Math.floor(playingPermutations / (pairOrderDivisor * courtOrderDivisor));
+
+  if (restCount <= 0) {
+    // 休憩者なし
+    return normalizedPerSelection;
+  }
+
+  // 休憩者あり: 休憩者の選択肢 × 正規化配列数
+  const restingCombinations = binomial(playersCount, restCount);
+  return restingCombinations * normalizedPerSelection;
 }
 
 /**
  * 標準的な正規化配列を使って最初のラウンドを作成する
  *
- * 固定ペアがない場合:
+ * 休憩者なし・固定ペアなしの場合:
  *   N人のプレイヤーの場合、最初のラウンドは常に [1, 2, 3, ..., N]
  *   例: 2コート、8人の場合: コート1: (1,2):(3,4)、コート2: (5,6):(7,8)
+ *
+ * 休憩者ありの場合:
+ *   初回は番号が大きいプレイヤーを休憩させる
+ *   例: 2コート、10人の場合: プレイ [1..8]、休憩 [9, 10]
  *
  * 固定ペアがある場合:
  *   固定ペア制約を満たす最初の正規化配列を探索
@@ -57,36 +96,46 @@ function createFirstRound(
   courtsCount: number,
   fixedPairs: FixedPair[]
 ): Round {
-  // 固定ペアがない場合は従来通り
-  if (fixedPairs.length === 0) {
-    const arrangement = createInitialArrangement(playersCount);
-    return arrangementToRound(arrangement, courtsCount, 1);
+  const playingCount = courtsCount * 4;
+  const restCount = playersCount - playingCount;
+  const allPlayers = createInitialArrangement(playersCount);
+
+  // 休憩者なし・固定ペアなしの場合は従来通り
+  if (restCount <= 0 && fixedPairs.length === 0) {
+    return arrangementToRoundWithRest(allPlayers, courtsCount, 1, []);
   }
 
-  // 固定ペアがある場合: 最初の有効な配列を探索
-  const arrangement = createInitialArrangement(playersCount);
-  do {
-    if (isNormalized(arrangement, courtsCount) &&
-        satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
-      return arrangementToRound(arrangement.slice(), courtsCount, 1);
-    }
-  } while (nextPermutation(arrangement));
+  // 休憩者ありまたは固定ペアがある場合: 探索が必要
+  // 初回の休憩者候補（番号が大きい順）
+  const initialRestCounts = initializeRestCounts(playersCount);
+
+  for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, initialRestCounts)) {
+    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p));
+    const arrangement = playingPlayers.slice();
+
+    do {
+      if (isNormalized(arrangement, courtsCount) &&
+          satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+        return arrangementToRoundWithRest(arrangement.slice(), courtsCount, 1, restingPlayers);
+      }
+    } while (nextPermutation(arrangement));
+  }
 
   throw new Error('固定ペアを満たす配置が見つかりません');
 }
 
 /**
- * 貪欲アルゴリズムを使用して最適な次のラウンドを探す
+ * 貪欲アルゴリズムを使用して最適な次のラウンドを探す（休憩者対応）
  *
  * アルゴリズム:
- * 1. [1, 2, ..., N] の全順列を生成
- * 2. 正規化された配列のみをフィルタ（例: 2コート8人で40,320通りから315通り）
- * 3. 固定ペア制約を満たす配列のみをフィルタ
- * 4. 各候補配列について:
- *    - 一時的なラウンドを作成
- *    - これまでの全ラウンドとの累積スコアを評価
- *    - 最低スコアの配列を追跡
- * 5. 最良の配列をラウンドとして返す
+ * 1. 現在の休憩回数を計算
+ * 2. ハイブリッドアプローチで休憩者候補を生成
+ * 3. 各休憩者パターンについて:
+ *    a. プレイするプレイヤーの全順列を生成
+ *    b. 正規化された配列のみをフィルタ
+ *    c. 固定ペア制約を満たす配列のみをフィルタ
+ *    d. 累積スコアを評価し、最低スコアを追跡
+ * 4. 最良の配列をラウンドとして返す
  *
  * @param currentRounds - これまでに生成された全ラウンド
  * @param playersCount - プレイヤーの総数
@@ -95,53 +144,67 @@ function createFirstRound(
  * @param fixedPairs - 固定ペアの配列
  * @returns 累積評価スコアが最低のラウンド
  *
- * 計算量: O(normalized_arrangements * rounds * players²)
- * 2コート8人の場合: O(315 * rounds * 64)
+ * 計算量: O(resting_combinations * normalized_arrangements * rounds * players²)
  */
 function findBestNextRound(
   currentRounds: Round[],
   playersCount: number,
   courtsCount: number,
-  weights: { w1: number; w2: number },
+  weights: { w1: number; w2: number; w3: number },
   fixedPairs: FixedPair[]
 ): Round {
-  const arrangement = createInitialArrangement(playersCount);
-  let bestArrangement: number[] | null = null;
+  const playingCount = courtsCount * 4;
+  const restCount = playersCount - playingCount;
+  const allPlayers = createInitialArrangement(playersCount);
+
+  // 現在の休憩回数を計算
+  const restCounts = initializeRestCounts(playersCount);
+  for (const round of currentRounds) {
+    updateRestCounts(round, restCounts);
+  }
+
+  let bestRound: Round | null = null;
   let bestScore = Infinity;
 
-  // 全順列を反復
-  do {
-    // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
-    if (isNormalized(arrangement, courtsCount) &&
-        satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
-      // 候補ラウンドを作成
-      const candidateRound = arrangementToRound(
-        arrangement.slice(), // ミューテーションを避けるためコピー
-        courtsCount,
-        currentRounds.length + 1
-      );
+  // ハイブリッドアプローチで休憩者候補を生成
+  for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, restCounts)) {
+    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p));
+    const arrangement = playingPlayers.slice();
 
-      // このラウンドを追加して評価
-      const candidateRounds = [...currentRounds, candidateRound];
-      const evaluation = evaluate(candidateRounds, playersCount, weights);
+    // プレイするプレイヤーの全順列を反復
+    do {
+      // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
+      if (isNormalized(arrangement, courtsCount) &&
+          satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+        // 候補ラウンドを作成
+        const candidateRound = arrangementToRoundWithRest(
+          arrangement.slice(),
+          courtsCount,
+          currentRounds.length + 1,
+          restingPlayers
+        );
 
-      // 最良を追跡
-      if (evaluation.totalScore < bestScore) {
-        bestScore = evaluation.totalScore;
-        bestArrangement = arrangement.slice(); // 参照ではなくコピー
+        // このラウンドを追加して評価
+        const candidateRounds = [...currentRounds, candidateRound];
+        const evaluation = evaluate(candidateRounds, playersCount, weights);
+
+        // 最良を追跡
+        if (evaluation.totalScore < bestScore) {
+          bestScore = evaluation.totalScore;
+          bestRound = candidateRound;
+        }
       }
-    }
-  } while (nextPermutation(arrangement));
+    } while (nextPermutation(arrangement));
+  }
 
-  // 最良の配列をラウンドに変換
-  if (!bestArrangement) {
+  if (!bestRound) {
     throw new Error('固定ペアを満たす配置が見つかりません');
   }
-  return arrangementToRound(bestArrangement, courtsCount, currentRounds.length + 1);
+  return bestRound;
 }
 
 /**
- * 進捗報告付きで非同期に最適な次のラウンドを探す
+ * 進捗報告付きで非同期に最適な次のラウンドを探す（休憩者対応）
  *
  * findBestNextRound と同様だが、コールバック経由で評価の進捗を報告する
  *
@@ -157,58 +220,74 @@ async function findBestNextRoundAsync(
   currentRounds: Round[],
   playersCount: number,
   courtsCount: number,
-  weights: { w1: number; w2: number },
+  weights: { w1: number; w2: number; w3: number },
   fixedPairs: FixedPair[],
   onProgress: (evaluationCount: number) => void
 ): Promise<Round> {
-  const arrangement = createInitialArrangement(playersCount);
-  let bestArrangement: number[] | null = null;
+  const playingCount = courtsCount * 4;
+  const restCount = playersCount - playingCount;
+  const allPlayers = createInitialArrangement(playersCount);
+
+  // 現在の休憩回数を計算
+  const restCounts = initializeRestCounts(playersCount);
+  for (const round of currentRounds) {
+    updateRestCounts(round, restCounts);
+  }
+
+  let bestRound: Round | null = null;
   let bestScore = Infinity;
   let evaluationCount = 0;
 
   const BATCH_SIZE = 100; // 100評価ごとにUIスレッドに制御を譲る
 
-  // 全順列を反復
-  do {
-    // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
-    if (isNormalized(arrangement, courtsCount) &&
-        satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
-      evaluationCount++;
+  // ハイブリッドアプローチで休憩者候補を生成
+  for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, restCounts)) {
+    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p));
+    const arrangement = playingPlayers.slice();
 
-      // 候補ラウンドを作成
-      const candidateRound = arrangementToRound(
-        arrangement.slice(),
-        courtsCount,
-        currentRounds.length + 1
-      );
+    // プレイするプレイヤーの全順列を反復
+    do {
+      // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
+      if (isNormalized(arrangement, courtsCount) &&
+          satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+        evaluationCount++;
 
-      // このラウンドを追加して評価
-      const candidateRounds = [...currentRounds, candidateRound];
-      const evaluation = evaluate(candidateRounds, playersCount, weights);
+        // 候補ラウンドを作成
+        const candidateRound = arrangementToRoundWithRest(
+          arrangement.slice(),
+          courtsCount,
+          currentRounds.length + 1,
+          restingPlayers
+        );
 
-      // 最良を追跡
-      if (evaluation.totalScore < bestScore) {
-        bestScore = evaluation.totalScore;
-        bestArrangement = arrangement.slice();
+        // このラウンドを追加して評価
+        const candidateRounds = [...currentRounds, candidateRound];
+        const evaluation = evaluate(candidateRounds, playersCount, weights);
+
+        // 最良を追跡
+        if (evaluation.totalScore < bestScore) {
+          bestScore = evaluation.totalScore;
+          bestRound = candidateRound;
+        }
+
+        // 定期的に進捗を報告し制御を譲る
+        if (evaluationCount % BATCH_SIZE === 0) {
+          onProgress(evaluationCount);
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
       }
-
-      // 定期的に進捗を報告し制御を譲る
-      if (evaluationCount % BATCH_SIZE === 0) {
-        onProgress(evaluationCount);
-        await new Promise(resolve => setTimeout(resolve, 0));
-      }
-    }
-  } while (nextPermutation(arrangement));
+    } while (nextPermutation(arrangement));
+  }
 
   // バッチ境界でない場合、最終進捗を報告
   if (evaluationCount % BATCH_SIZE !== 0) {
     onProgress(evaluationCount);
   }
 
-  if (!bestArrangement) {
+  if (!bestRound) {
     throw new Error('固定ペアを満たす配置が見つかりません');
   }
-  return arrangementToRound(bestArrangement, courtsCount, currentRounds.length + 1);
+  return bestRound;
 }
 
 /**

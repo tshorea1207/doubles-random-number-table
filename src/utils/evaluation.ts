@@ -1,4 +1,4 @@
-import type { Round, Evaluation, CountMatrix } from '../types/schedule';
+import type { Round, Evaluation, CountMatrix, RestCounts } from '../types/schedule';
 import { calculateStandardDeviation, extractUpperTriangleValues } from './statistics';
 
 /**
@@ -72,36 +72,76 @@ export function updateCountMatrices(
 }
 
 /**
- * ペアと対戦の公平性に基づいてスケジュールの品質を評価する
+ * 休憩回数カウント配列を全て0で初期化する
+ *
+ * @param playersCount - プレイヤー数
+ * @returns 0で埋められた長さNの配列
+ *
+ * @example
+ * initializeRestCounts(10) // [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+ *
+ * 計算量: O(N)
+ */
+export function initializeRestCounts(playersCount: number): RestCounts {
+  return Array(playersCount).fill(0);
+}
+
+/**
+ * ラウンドに基づいて休憩回数カウントを更新する
+ *
+ * 重要: プレイヤー番号は1始まり、配列インデックスは0始まり
+ * インデックス参照時は常に1を引く: restCounts[player - 1]
+ *
+ * @param round - 処理するラウンド
+ * @param restCounts - 各プレイヤーの休憩回数を追跡する配列（その場で変更）
+ *
+ * @example
+ * // restingPlayers: [9, 10] のラウンド
+ * // 更新内容:
+ * // - restCounts[8]++（プレイヤー9が休憩）
+ * // - restCounts[9]++（プレイヤー10が休憩）
+ *
+ * 計算量: O(休憩者数)
+ */
+export function updateRestCounts(round: Round, restCounts: RestCounts): void {
+  for (const player of round.restingPlayers) {
+    restCounts[player - 1]++;
+  }
+}
+
+/**
+ * ペア、対戦、休憩の公平性に基づいてスケジュールの品質を評価する
  *
  * 評価式:
- *   totalScore = pairStdDev * w1 + oppoStdDev * w2
+ *   totalScore = pairStdDev * w1 + oppoStdDev * w2 + restStdDev * w3
  *
- * スコアが低いほど良い。理想解: pairStdDev = 0, oppoStdDev = 0
- * （全プレイヤーが他の全員と均等にペアを組み、均等に対戦する）
+ * スコアが低いほど良い。理想解: pairStdDev = 0, oppoStdDev = 0, restStdDev = 0
+ * （全プレイヤーが他の全員と均等にペアを組み、均等に対戦し、均等に休憩する）
  *
  * @param rounds - 評価する全ラウンド
  * @param playersCount - プレイヤーの総数
- * @param weights - ペアと対戦の公平性の重み（w1 > w2 でペアの公平性を優先）
+ * @param weights - 公平性の重み（w1: ペア、w2: 対戦、w3: 休憩）
  * @returns 評価指標
  *
  * @example
- * evaluate([round1, round2, round3], 8, { w1: 1.0, w2: 0.5 })
- * // 戻り値: { pairStdDev: 0.52, oppoStdDev: 0.82, totalScore: 0.93 }
+ * evaluate([round1, round2, round3], 10, { w1: 1.0, w2: 0.5, w3: 2.0 })
+ * // 戻り値: { pairStdDev: 0.52, oppoStdDev: 0.82, restStdDev: 0.47, totalScore: 1.87 }
  *
  * 計算量: O(rounds * courts + players²)
  */
 export function evaluate(
   rounds: Round[],
   playersCount: number,
-  weights: { w1: number; w2: number }
+  weights: { w1: number; w2: number; w3: number }
 ): Evaluation {
   const pairCounts = initializeCountMatrix(playersCount);
   const oppoCounts = initializeCountMatrix(playersCount);
+  const restCounts = initializeRestCounts(playersCount);
 
   // 全ラウンドのカウントを累積
   for (const round of rounds) {
     updateCountMatrices(round, pairCounts, oppoCounts);
+    updateRestCounts(round, restCounts);
   }
 
   // 上三角の値を抽出（対称行列なので、各ペアを1回だけカウント）
@@ -111,9 +151,10 @@ export function evaluate(
   // 標準偏差を計算
   const pairStdDev = calculateStandardDeviation(pairValues);
   const oppoStdDev = calculateStandardDeviation(oppoValues);
+  const restStdDev = calculateStandardDeviation(restCounts);
 
   // 総合スコアを計算（重み付き合計）
-  const totalScore = pairStdDev * weights.w1 + oppoStdDev * weights.w2;
+  const totalScore = pairStdDev * weights.w1 + oppoStdDev * weights.w2 + restStdDev * weights.w3;
 
-  return { pairStdDev, oppoStdDev, totalScore };
+  return { pairStdDev, oppoStdDev, restStdDev, totalScore };
 }

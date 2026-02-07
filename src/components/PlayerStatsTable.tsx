@@ -12,8 +12,8 @@ import {
   Box,
   Typography,
 } from '@mui/material';
-import type { Schedule, CountMatrix, FixedPair } from '../types/schedule';
-import { initializeCountMatrix, updateCountMatrices } from '../utils/evaluation';
+import type { Schedule, CountMatrix, FixedPair, RestCounts } from '../types/schedule';
+import { initializeCountMatrix, updateCountMatrices, initializeRestCounts, updateRestCounts } from '../utils/evaluation';
 
 /**
  * 固定ペアによって必ず0になるセルかどうかを判定する
@@ -159,16 +159,74 @@ function renderMatrix(
   );
 }
 
+/**
+ * 休憩回数をテーブルとして描画する
+ *
+ * @param restCounts - 休憩回数配列
+ * @param playersCount - プレイヤー数
+ */
+function renderRestCounts(restCounts: RestCounts, _playersCount: number) {
+  const maxCount = Math.max(...restCounts, 1);
+
+  return (
+    <>
+      <Typography variant="subtitle1" sx={{ p: 2, pb: 1 }}>
+        各プレイヤーの休憩回数
+      </Typography>
+
+      <TableContainer>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>
+                <strong>プレイヤー</strong>
+              </TableCell>
+              <TableCell align="center">
+                <strong>休憩回数</strong>
+              </TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {restCounts.map((count, i) => (
+              <TableRow key={i}>
+                <TableCell>
+                  <strong>{i + 1}</strong>
+                </TableCell>
+                <TableCell
+                  align="center"
+                  sx={{
+                    bgcolor: `rgba(255, 152, 0, ${Math.min(count / maxCount * 0.6, 0.6)})`,
+                  }}
+                >
+                  {count}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </>
+  );
+}
+
 export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
   const [tabValue, setTabValue] = useState(0);
 
   // カウント行列を計算
   const pairCounts = initializeCountMatrix(schedule.players);
   const oppoCounts = initializeCountMatrix(schedule.players);
+  const restCounts = initializeRestCounts(schedule.players);
 
   for (const round of schedule.rounds) {
     updateCountMatrices(round, pairCounts, oppoCounts);
+    updateRestCounts(round, restCounts);
   }
+
+  // 休憩者がいるかどうか
+  const hasRestingPlayers = schedule.rounds.some(
+    (round) => round.restingPlayers && round.restingPlayers.length > 0
+  );
 
   return (
     <Paper elevation={3} sx={{ mb: 3 }}>
@@ -179,6 +237,7 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
       <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ px: 2 }}>
         <Tab label="ペア回数" />
         <Tab label="対戦回数" />
+        {hasRestingPlayers && <Tab label="休憩回数" />}
       </Tabs>
 
       <Box sx={{ mt: 1 }}>
@@ -186,14 +245,22 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
           renderMatrix(pairCounts, 'プレイヤー間のペア回数', schedule.players, schedule.fixedPairs, 'pair')}
         {tabValue === 1 &&
           renderMatrix(oppoCounts, 'プレイヤー間の対戦回数', schedule.players, schedule.fixedPairs, 'opponent')}
+        {tabValue === 2 && hasRestingPlayers &&
+          renderRestCounts(restCounts, schedule.players)}
       </Box>
 
       {/* 凡例 */}
       <Box sx={{ p: 2, pt: 1 }}>
         <Typography variant="caption" color="text.secondary">
-          上三角のみ表示（対称行列のため）。色が濃いほど回数が多いです。
-          {schedule.fixedPairs.length > 0 && (
-            <> グレーのセルは固定ペアにより必ず0になる組み合わせです。</>
+          {tabValue < 2 ? (
+            <>
+              上三角のみ表示（対称行列のため）。色が濃いほど回数が多いです。
+              {schedule.fixedPairs.length > 0 && (
+                <> グレーのセルは固定ペアにより必ず0になる組み合わせです。</>
+              )}
+            </>
+          ) : (
+            <>色が濃いほど休憩回数が多いです。理想的には全員が均等に休憩します。</>
           )}
         </Typography>
       </Box>

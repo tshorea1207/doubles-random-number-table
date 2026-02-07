@@ -3,6 +3,8 @@
  * C++ STL の next_permutation アルゴリズムに基づく
  */
 
+import type { RestCounts } from '../types/schedule';
+
 /**
  * 部分配列をその場で反転する
  *
@@ -86,4 +88,96 @@ export function nextPermutation(arr: number[]): boolean {
  */
 export function createInitialArrangement(playersCount: number): number[] {
   return Array.from({ length: playersCount }, (_, i) => i + 1);
+}
+
+/**
+ * N個の要素からK個を選択する組み合わせを生成するジェネレータ
+ *
+ * @param arr - 選択元の配列
+ * @param k - 選択する要素数
+ * @yields 選択された要素の配列
+ *
+ * @example
+ * [...generateCombinations([1, 2, 3], 2)]
+ * // [[1, 2], [1, 3], [2, 3]]
+ *
+ * 計算量: O(C(n, k)) = O(n! / (k!(n-k)!))
+ */
+export function* generateCombinations(arr: number[], k: number): Generator<number[]> {
+  if (k === 0) {
+    yield [];
+    return;
+  }
+  if (arr.length < k) {
+    return;
+  }
+
+  const [first, ...rest] = arr;
+  // first を含む組み合わせ
+  for (const combo of generateCombinations(rest, k - 1)) {
+    yield [first, ...combo];
+  }
+  // first を含まない組み合わせ
+  yield* generateCombinations(rest, k);
+}
+
+/**
+ * ハイブリッドアプローチで休憩者候補を生成するジェネレータ
+ *
+ * アルゴリズム:
+ * 1. 休憩回数の最小値 minRest と最大値 maxRest を計算
+ * 2. 差分 diff = maxRest - minRest を計算
+ * 3. diff >= 2 の場合: 公平性制約を適用
+ *    - 休憩回数が maxRest のプレイヤーは必ずプレイ（除外）
+ *    - 休憩回数が minRest のプレイヤーを優先的に休憩
+ * 4. diff < 2 の場合: 全探索
+ *
+ * @param allPlayers - 全プレイヤー番号の配列
+ * @param restCount - 休憩させる人数
+ * @param restCounts - 各プレイヤーの現在の休憩回数
+ * @yields 休憩者候補の配列（昇順ソート済み）
+ *
+ * @example
+ * // 10人中2人休憩、休憩回数: [1,1,1,0,0,0,1,1,2,2]
+ * // minRest=0 (プレイヤー4,5,6), maxRest=2 (プレイヤー9,10), diff=2
+ * // 制約適用: プレイヤー4,5,6から2人を選択
+ * [...generateRestingCandidates([1..10], 2, restCounts)]
+ * // [[4, 5], [4, 6], [5, 6]]
+ */
+export function* generateRestingCandidates(
+  allPlayers: number[],
+  restCount: number,
+  restCounts: RestCounts
+): Generator<number[]> {
+  // 休憩者がいない場合は空配列のみを生成
+  if (restCount === 0) {
+    yield [];
+    return;
+  }
+
+  const minRest = Math.min(...restCounts);
+  const maxRest = Math.max(...restCounts);
+  const diff = maxRest - minRest;
+
+  if (diff >= 2) {
+    // ハイブリッド: 休憩回数が少ない人から優先的に休憩
+    // maxRestのプレイヤーは除外（必ずプレイ）
+    const mustRest = allPlayers.filter(p => restCounts[p - 1] === minRest);
+    const canRest = allPlayers.filter(p => restCounts[p - 1] < maxRest);
+
+    // mustRestからrestCount人を選択できる場合
+    if (mustRest.length >= restCount) {
+      yield* generateCombinations(mustRest, restCount);
+    } else {
+      // mustRestだけでは足りない場合、canRestから補充
+      const remaining = restCount - mustRest.length;
+      const others = canRest.filter(p => !mustRest.includes(p));
+      for (const extra of generateCombinations(others, remaining)) {
+        yield [...mustRest, ...extra].sort((a, b) => a - b);
+      }
+    }
+  } else {
+    // 全探索: 全プレイヤーからrestCount人を選択
+    yield* generateCombinations(allPlayers, restCount);
+  }
 }

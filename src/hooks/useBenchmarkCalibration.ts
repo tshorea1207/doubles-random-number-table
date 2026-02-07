@@ -7,7 +7,7 @@ const BENCHMARK_CONFIG: ScheduleParams = {
   courtsCount: 1,
   playersCount: 4,
   roundsCount: 2,
-  weights: { w1: 1.0, w2: 0.5 },
+  weights: { w1: 1.0, w2: 0.5, w3: 2.0 },
   fixedPairs: [],
 };
 
