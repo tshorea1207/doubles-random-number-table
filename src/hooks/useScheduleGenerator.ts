@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
 import type { Schedule, ScheduleParams, Round, GenerationProgress, FixedPair } from '../types/schedule';
-import { createInitialArrangement, nextPermutation, generateRestingCandidates } from '../utils/permutation';
-import { isNormalized, arrangementToRoundWithRest } from '../utils/normalization';
+import { createInitialArrangement, generateRestingCandidates } from '../utils/permutation';
+import { arrangementToRoundWithRest } from '../utils/normalization';
 import { evaluate, initializeRestCounts, updateRestCounts } from '../utils/evaluation';
 import { satisfiesFixedPairs } from '../utils/fixedPairs';
+import { getNormalizedArrangements } from '../utils/normalizedArrangements';
 
 /**
  * 階乗（n!）を計算する
@@ -110,15 +111,15 @@ function createFirstRound(
   const initialRestCounts = initializeRestCounts(playersCount);
 
   for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, initialRestCounts)) {
-    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p));
-    const arrangement = playingPlayers.slice();
+    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
-    do {
-      if (isNormalized(arrangement, courtsCount) &&
-          satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+    // 事前生成された正規化配置を反復
+    const normalizedArrangements = getNormalizedArrangements(playingPlayers, courtsCount);
+    for (const arrangement of normalizedArrangements) {
+      if (satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
         return arrangementToRoundWithRest(arrangement.slice(), courtsCount, 1, restingPlayers);
       }
-    } while (nextPermutation(arrangement));
+    }
   }
 
   throw new Error('固定ペアを満たす配置が見つかりません');
@@ -168,14 +169,13 @@ function findBestNextRound(
 
   // ハイブリッドアプローチで休憩者候補を生成
   for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, restCounts)) {
-    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p));
-    const arrangement = playingPlayers.slice();
+    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
-    // プレイするプレイヤーの全順列を反復
-    do {
-      // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
-      if (isNormalized(arrangement, courtsCount) &&
-          satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+    // 事前生成された正規化配置を反復
+    const normalizedArrangements = getNormalizedArrangements(playingPlayers, courtsCount);
+    for (const arrangement of normalizedArrangements) {
+      // 固定ペア制約を満たす配列のみを評価
+      if (satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
         // 候補ラウンドを作成
         const candidateRound = arrangementToRoundWithRest(
           arrangement.slice(),
@@ -194,7 +194,7 @@ function findBestNextRound(
           bestRound = candidateRound;
         }
       }
-    } while (nextPermutation(arrangement));
+    }
   }
 
   if (!bestRound) {
@@ -242,14 +242,13 @@ async function findBestNextRoundAsync(
 
   // ハイブリッドアプローチで休憩者候補を生成
   for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, restCounts)) {
-    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p));
-    const arrangement = playingPlayers.slice();
+    const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
-    // プレイするプレイヤーの全順列を反復
-    do {
-      // 正規化された配列かつ固定ペア制約を満たす配列のみを評価
-      if (isNormalized(arrangement, courtsCount) &&
-          satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+    // 事前生成された正規化配置を反復
+    const normalizedArrangements = getNormalizedArrangements(playingPlayers, courtsCount);
+    for (const arrangement of normalizedArrangements) {
+      // 固定ペア制約を満たす配列のみを評価
+      if (satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
         evaluationCount++;
 
         // 候補ラウンドを作成
@@ -276,7 +275,7 @@ async function findBestNextRoundAsync(
           await new Promise(resolve => setTimeout(resolve, 0));
         }
       }
-    } while (nextPermutation(arrangement));
+    }
   }
 
   // バッチ境界でない場合、最終進捗を報告
