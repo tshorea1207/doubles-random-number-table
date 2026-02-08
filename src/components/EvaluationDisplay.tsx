@@ -1,5 +1,9 @@
-import { Box, Typography, Chip, Paper } from '@mui/material';
+import { useState } from 'react';
+import { Box, Typography, Chip, Paper, Collapse, IconButton } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import type { Evaluation } from '../types/schedule';
 
 interface EvaluationDisplayProps {
@@ -7,84 +11,120 @@ interface EvaluationDisplayProps {
 }
 
 export function EvaluationDisplay({ evaluation }: EvaluationDisplayProps) {
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
+
   const isIdeal = evaluation.pairStdDev === 0 && evaluation.oppoStdDev === 0 && evaluation.restStdDev === 0;
   const hasRestingPlayers = evaluation.restStdDev > 0;
 
-  // 総合スコアに基づいて品質の色を決定
   const getQualityColor = (score: number): string => {
-    if (score < 0.5) return '#4caf50'; // 緑 - 優秀
-    if (score < 1.0) return '#ff9800'; // オレンジ - 良好
-    return '#f44336'; // 赤 - 要改善
+    if (score < 0.5) return theme.palette.success.main;
+    if (score < 1.0) return theme.palette.warning.main;
+    return theme.palette.error.main;
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        評価結果
-      </Typography>
+    <Paper sx={{ p: 3, mb: 3 }}>
+      {/* ヘッダー行: 常時表示 */}
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <Typography variant="h6" sx={{ flex: 1 }}>
+          評価結果
+        </Typography>
 
-      {isIdeal && (
-        <Chip
-          icon={<CheckCircleIcon />}
-          label="理想解！"
-          color="success"
-          sx={{ mb: 2 }}
-        />
-      )}
-
-      <Box sx={{ display: 'grid', gridTemplateColumns: hasRestingPlayers ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: 2 }}>
-        {/* ペア回数の標準偏差 */}
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            ペア回数の標準偏差
-          </Typography>
-          <Typography variant="h6" sx={{ mt: 1 }}>
-            {evaluation.pairStdDev.toFixed(4)}
-          </Typography>
-        </Box>
-
-        {/* 対戦回数の標準偏差 */}
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            対戦回数の標準偏差
-          </Typography>
-          <Typography variant="h6" sx={{ mt: 1 }}>
-            {evaluation.oppoStdDev.toFixed(4)}
-          </Typography>
-        </Box>
-
-        {/* 休憩回数の標準偏差（休憩者がいる場合のみ表示） */}
-        {hasRestingPlayers && (
-          <Box>
-            <Typography variant="body2" color="text.secondary">
-              休憩回数の標準偏差
-            </Typography>
-            <Typography variant="h6" sx={{ mt: 1 }}>
-              {evaluation.restStdDev.toFixed(4)}
-            </Typography>
-          </Box>
+        {isIdeal && (
+          <Chip
+            icon={<CheckCircleIcon />}
+            label="理想解！"
+            color="success"
+            size="small"
+            sx={{ mr: 2 }}
+          />
         )}
 
-        {/* 総合スコア */}
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            総合評価スコア
+        <Box sx={{
+          borderLeft: 3,
+          borderColor: getQualityColor(evaluation.totalScore),
+          pl: 1.5,
+          mr: 1,
+        }}>
+          <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.2 }}>
+            総合スコア
           </Typography>
           <Typography
             variant="h6"
-            sx={{ mt: 1, color: getQualityColor(evaluation.totalScore) }}
+            sx={{ color: getQualityColor(evaluation.totalScore), lineHeight: 1.2 }}
           >
             {evaluation.totalScore.toFixed(4)}
           </Typography>
         </Box>
+
+        <IconButton size="small" aria-label={expanded ? '詳細を閉じる' : '詳細を表示'}>
+          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
       </Box>
 
-      {/* 説明 */}
-      <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-        <Typography variant="caption" color="text.secondary">
-          値が小さいほど公平な組み合わせです。理想解は両方の標準偏差が 0 になります。
-        </Typography>
-      </Box>
+      {/* 展開時: 詳細指標 */}
+      <Collapse in={expanded}>
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr 1fr', sm: hasRestingPlayers ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)' },
+          gap: 2,
+          mt: 2,
+          pt: 2,
+          borderTop: 1,
+          borderColor: 'divider',
+        }}>
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              ペア回数の標準偏差
+            </Typography>
+            <Typography variant="h6" sx={{ mt: 1 }}>
+              {evaluation.pairStdDev.toFixed(4)}
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              対戦回数の標準偏差
+            </Typography>
+            <Typography variant="h6" sx={{ mt: 1 }}>
+              {evaluation.oppoStdDev.toFixed(4)}
+            </Typography>
+          </Box>
+
+          {hasRestingPlayers && (
+            <Box>
+              <Typography variant="body2" color="text.secondary">
+                休憩回数の標準偏差
+              </Typography>
+              <Typography variant="h6" sx={{ mt: 1 }}>
+                {evaluation.restStdDev.toFixed(4)}
+              </Typography>
+            </Box>
+          )}
+
+          <Box>
+            <Typography variant="body2" color="text.secondary">
+              総合評価スコア
+            </Typography>
+            <Typography
+              variant="h6"
+              sx={{ mt: 1, color: getQualityColor(evaluation.totalScore) }}
+            >
+              {evaluation.totalScore.toFixed(4)}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Typography variant="caption" color="text.secondary">
+            値が小さいほど公平な組み合わせです。理想解は両方の標準偏差が 0 になります。
+          </Typography>
+        </Box>
+      </Collapse>
     </Paper>
   );
 }

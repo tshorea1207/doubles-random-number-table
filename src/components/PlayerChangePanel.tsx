@@ -87,7 +87,6 @@ export function PlayerChangePanel({
   };
 
   const handleRegenerate = () => {
-    // 除外プレイヤーを含む固定ペアを自動削除
     const newFixedPairs = schedule.fixedPairs.filter(
       fp => newActivePlayers.includes(fp.player1) && newActivePlayers.includes(fp.player2)
     );
@@ -101,17 +100,15 @@ export function PlayerChangePanel({
       fixedPairs: newFixedPairs,
     });
 
-    // 変更をリセット
     setPendingAdds([]);
     setPendingRemoves([]);
     setRemoveTarget('');
   };
 
-  // 休憩者数の計算
   const newRestingCount = Math.max(0, newActivePlayers.length - schedule.courts * 4);
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+    <Paper sx={{ p: 3, mb: 3 }}>
       <Typography variant="h6" gutterBottom>
         参加者の変更
       </Typography>
@@ -121,8 +118,14 @@ export function PlayerChangePanel({
         {' / '}消化済み: {completedCount} / {totalRounds} ラウンド
       </Typography>
 
-      {/* 追加ボタン */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+      {/* 追加・離脱コントロール */}
+      <Box sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: 2,
+        mb: 2,
+        alignItems: { xs: 'stretch', sm: 'center' },
+      }}>
         <Button
           variant="outlined"
           startIcon={<PersonAddIcon />}
@@ -134,29 +137,31 @@ export function PlayerChangePanel({
         </Button>
 
         {/* 離脱セレクト + ボタン */}
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>離脱するプレイヤー</InputLabel>
-          <Select
-            value={removeTarget}
-            onChange={(e) => setRemoveTarget(e.target.value as number | '')}
-            label="離脱するプレイヤー"
-            disabled={isGenerating || removeCandidates.length === 0}
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
+            <InputLabel>離脱するプレイヤー</InputLabel>
+            <Select
+              value={removeTarget}
+              onChange={(e) => setRemoveTarget(e.target.value as number | '')}
+              label="離脱するプレイヤー"
+              disabled={isGenerating || removeCandidates.length === 0}
+            >
+              {removeCandidates.map(p => (
+                <MenuItem key={p} value={p}>プレイヤー {p}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            variant="outlined"
+            color="warning"
+            startIcon={<PersonRemoveIcon />}
+            onClick={handleRemove}
+            disabled={isGenerating || removeTarget === ''}
+            size="small"
           >
-            {removeCandidates.map(p => (
-              <MenuItem key={p} value={p}>プレイヤー {p}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button
-          variant="outlined"
-          color="warning"
-          startIcon={<PersonRemoveIcon />}
-          onClick={handleRemove}
-          disabled={isGenerating || removeTarget === ''}
-          size="small"
-        >
-          除外
-        </Button>
+            除外
+          </Button>
+        </Box>
       </Box>
 
       {/* 変更内容の表示 */}

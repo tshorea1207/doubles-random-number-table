@@ -49,7 +49,7 @@ function App() {
   }, [regenerate]);
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1, sm: 3 } }}>
       {/* ヘッダー */}
       <Typography variant="h3" component="h1" gutterBottom>
         テニス ダブルス組み合わせ最適化

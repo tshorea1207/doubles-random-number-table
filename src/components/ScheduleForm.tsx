@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogActions,
 } from '@mui/material';
+import TuneIcon from '@mui/icons-material/Tune';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import type { ScheduleParams, FixedPair } from '../types/schedule';
 import { useBenchmarkCalibration } from '../hooks/useBenchmarkCalibration';
@@ -33,6 +34,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const [w3, setW3] = useState(2.0);
   const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
   const [helpTarget, setHelpTarget] = useState<'w1' | 'w2' | 'w3' | null>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // ハードウェア性能に基づく動的キャリブレーション係数
   const { coefficient } = useBenchmarkCalibration();
@@ -74,15 +76,11 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const estimateTime = (): string => {
     if (!isValid) return '';
 
-    // 計算量に基づく経験式
-    // 基本計算量はコート数とプレイヤー数に対して指数的に増加
     const baseComplexity = Math.pow(players / 4, courts * 1.5);
     const roundFactor = Math.max(rounds - 1, 1);
 
-    // 推定秒数（ハードウェアに基づいて動的にキャリブレーション）
     let seconds = (baseComplexity * roundFactor * coefficient);
 
-    // 出力をフォーマット
     if (seconds < 1) {
       return '< 1秒';
     } else if (seconds < 60) {
@@ -98,10 +96,20 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const estimatedTime = estimateTime();
 
   return (
-    <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        スケジュール設定
-      </Typography>
+    <Paper sx={{ p: 3, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Typography variant="h6">
+          スケジュール設定
+        </Typography>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<TuneIcon />}
+          onClick={() => setAdvancedOpen(true)}
+        >
+          詳細設定
+        </Button>
+      </Box>
 
       <form onSubmit={handleSubmit}>
         <Grid container spacing={3}>
@@ -145,79 +153,6 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* 重み W1 */}
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography gutterBottom sx={{ mb: 0 }}>
-                重み W1 (ペア回数): {w1.toFixed(1)}
-              </Typography>
-              <IconButton size="small" onClick={() => setHelpTarget('w1')} sx={{ ml: 0.5 }}>
-                <HelpOutlineIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <Slider
-              value={w1}
-              onChange={(_, value) => setW1(value as number)}
-              min={0.1}
-              max={10}
-              step={0.1}
-              marks={[
-                { value: 0.1, label: '0.1' },
-                { value: 1, label: '1.0' },
-                { value: 10, label: '10' },
-              ]}
-            />
-          </Grid>
-
-          {/* 重み W2 */}
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography gutterBottom sx={{ mb: 0 }}>
-                重み W2 (対戦回数): {w2.toFixed(1)}
-              </Typography>
-              <IconButton size="small" onClick={() => setHelpTarget('w2')} sx={{ ml: 0.5 }}>
-                <HelpOutlineIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <Slider
-              value={w2}
-              onChange={(_, value) => setW2(value as number)}
-              min={0.1}
-              max={10}
-              step={0.1}
-              marks={[
-                { value: 0.1, label: '0.1' },
-                { value: 0.5, label: '0.5' },
-                { value: 10, label: '10' },
-              ]}
-            />
-          </Grid>
-
-          {/* 重み W3 */}
-          <Grid item xs={12} sm={4}>
-            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Typography gutterBottom sx={{ mb: 0 }}>
-                重み W3 (休憩回数): {w3.toFixed(1)}
-              </Typography>
-              <IconButton size="small" onClick={() => setHelpTarget('w3')} sx={{ ml: 0.5 }}>
-                <HelpOutlineIcon fontSize="small" />
-              </IconButton>
-            </Box>
-            <Slider
-              value={w3}
-              onChange={(_, value) => setW3(value as number)}
-              min={0.1}
-              max={10}
-              step={0.1}
-              marks={[
-                { value: 0.1, label: '0.1' },
-                { value: 2, label: '2.0' },
-                { value: 10, label: '10' },
-              ]}
-              disabled={restingCount === 0}
-            />
-          </Grid>
-
           {/* 固定ペア */}
           <Grid item xs={12}>
             <FixedPairsInput
@@ -255,6 +190,98 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
         </Typography>
       </Box>
 
+      {/* 詳細設定ダイアログ */}
+      <Dialog open={advancedOpen} onClose={() => setAdvancedOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>詳細設定</DialogTitle>
+        <DialogContent>
+          {/* 重み W1 */}
+          <Box sx={{ mt: 1, mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography gutterBottom sx={{ mb: 0 }}>
+                重み W1 (ペア回数): {w1.toFixed(1)}
+              </Typography>
+              <IconButton size="small" onClick={() => setHelpTarget('w1')} aria-label="W1の説明を表示" sx={{ ml: 0.5 }}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Slider
+              value={w1}
+              onChange={(_, value) => setW1(value as number)}
+              min={0.1}
+              max={10}
+              step={0.1}
+              marks={[
+                { value: 0.1, label: '0.1' },
+                { value: 1, label: '1.0' },
+                { value: 10, label: '10' },
+              ]}
+            />
+          </Box>
+
+          {/* 重み W2 */}
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography gutterBottom sx={{ mb: 0 }}>
+                重み W2 (対戦回数): {w2.toFixed(1)}
+              </Typography>
+              <IconButton size="small" onClick={() => setHelpTarget('w2')} aria-label="W2の説明を表示" sx={{ ml: 0.5 }}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Slider
+              value={w2}
+              onChange={(_, value) => setW2(value as number)}
+              min={0.1}
+              max={10}
+              step={0.1}
+              marks={[
+                { value: 0.1, label: '0.1' },
+                { value: 0.5, label: '0.5' },
+                { value: 10, label: '10' },
+              ]}
+            />
+          </Box>
+
+          {/* 重み W3 */}
+          <Box sx={{ mb: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography gutterBottom sx={{ mb: 0 }}>
+                重み W3 (休憩回数): {w3.toFixed(1)}
+              </Typography>
+              <IconButton size="small" onClick={() => setHelpTarget('w3')} aria-label="W3の説明を表示" sx={{ ml: 0.5 }}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Slider
+              value={w3}
+              onChange={(_, value) => setW3(value as number)}
+              min={0.1}
+              max={10}
+              step={0.1}
+              marks={[
+                { value: 0.1, label: '0.1' },
+                { value: 2, label: '2.0' },
+                { value: 10, label: '10' },
+              ]}
+              disabled={restingCount === 0}
+            />
+            {restingCount === 0 && (
+              <Typography variant="caption" color="text.secondary">
+                休憩者がいないため無効です
+              </Typography>
+            )}
+          </Box>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+            計算式: 総合スコア = ペア偏差×W1 + 対戦偏差×W2 + 休憩偏差×W3
+            <br />スコアが小さいほど公平な組み合わせです。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAdvancedOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
+
       {/* 重み解説ダイアログ */}
       <Dialog open={helpTarget !== null} onClose={() => setHelpTarget(null)}>
         <DialogTitle>
@@ -286,10 +313,6 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
               <br /><br />推奨値: 2.0
             </Typography>
           )}
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-            計算式: 総合スコア = ペア偏差×W1 + 対戦偏差×W2 + 休憩偏差×W3
-            <br />スコアが小さいほど公平な組み合わせです。
-          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHelpTarget(null)}>閉じる</Button>

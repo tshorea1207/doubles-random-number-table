@@ -17,12 +17,6 @@ import { initializeCountMatrix, updateCountMatrices, initializeRestCounts, updat
 
 /**
  * 固定ペアによって必ず0になるセルかどうかを判定する
- *
- * @param i - 行インデックス（0始まり）
- * @param j - 列インデックス（0始まり）
- * @param fixedPairs - 固定ペアの配列
- * @param matrixType - 'pair'（ペア回数）または 'opponent'（対戦回数）
- * @returns 固定ペアにより必ず0になるセルならtrue
  */
 function isFixedPairZeroCell(
   i: number,
@@ -32,28 +26,21 @@ function isFixedPairZeroCell(
 ): boolean {
   if (fixedPairs.length === 0) return false;
 
-  // プレイヤー番号に変換（1始まり）
   const p1 = i + 1;
   const p2 = j + 1;
 
   if (matrixType === 'pair') {
-    // ペア回数行列: 固定ペアのメンバーは、固定ペアの相手以外とは組まない
     for (const fp of fixedPairs) {
-      // p1が固定ペアのメンバーの場合
       if (fp.player1 === p1 || fp.player2 === p1) {
-        // p2が固定ペアの相手でない場合は必ず0
         const partner = fp.player1 === p1 ? fp.player2 : fp.player1;
         if (p2 !== partner) return true;
       }
-      // p2が固定ペアのメンバーの場合
       if (fp.player1 === p2 || fp.player2 === p2) {
-        // p1が固定ペアの相手でない場合は必ず0
         const partner = fp.player1 === p2 ? fp.player2 : fp.player1;
         if (p1 !== partner) return true;
       }
     }
   } else {
-    // 対戦回数行列: 固定ペアのメンバー同士は対戦しない（同じチーム）
     for (const fp of fixedPairs) {
       if ((fp.player1 === p1 && fp.player2 === p2) ||
           (fp.player1 === p2 && fp.player2 === p1)) {
@@ -65,21 +52,20 @@ function isFixedPairZeroCell(
   return false;
 }
 
+/** sticky列の共通スタイル */
+const stickyColumnSx = {
+  position: 'sticky',
+  left: 0,
+  zIndex: 1,
+  bgcolor: 'background.paper',
+  borderRight: 1,
+  borderColor: 'divider',
+} as const;
+
 interface PlayerStatsTableProps {
   schedule: Schedule;
 }
 
-/**
- * カウント行列をテーブルとして描画する
- * 対称行列の冗長性を避けるため上三角（i < j）のみ表示
- *
- * @param matrix - カウント行列
- * @param title - テーブルのタイトル
- * @param playersCount - プレイヤー数（行列サイズ）
- * @param fixedPairs - 固定ペアの配列
- * @param matrixType - 'pair'（ペア回数）または 'opponent'（対戦回数）
- * @param activeSet - アクティブプレイヤーのセット
- */
 function renderMatrix(
   matrix: CountMatrix,
   title: string,
@@ -98,13 +84,21 @@ function renderMatrix(
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>
-                <strong>プレイヤー</strong>
+              <TableCell sx={stickyColumnSx}>
+                <strong>P</strong>
               </TableCell>
               {Array.from({ length: playersCount }, (_, i) => {
                 const isActive = activeSet.has(i + 1);
                 return (
-                  <TableCell key={i} align="center" sx={{ opacity: isActive ? 1 : 0.3 }}>
+                  <TableCell
+                    key={i}
+                    align="center"
+                    sx={{
+                      opacity: isActive ? 1 : 0.3,
+                      minWidth: { xs: 28, sm: 36 },
+                      fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                    }}
+                  >
                     <strong>{i + 1}</strong>
                   </TableCell>
                 );
@@ -117,26 +111,18 @@ function renderMatrix(
               const rowActive = activeSet.has(i + 1);
               return (
                 <TableRow key={i} sx={{ opacity: rowActive ? 1 : 0.3 }}>
-                  <TableCell>
+                  <TableCell sx={stickyColumnSx}>
                     <strong>{i + 1}</strong>
                   </TableCell>
                   {row.map((count, j) => {
                     const colActive = activeSet.has(j + 1);
                     const bothActive = rowActive && colActive;
-
-                    // 上三角（i < j）のみ表示
-                    // 対角線と下三角は '-' として表示
                     const isUpperTriangle = i < j;
                     const displayValue = isUpperTriangle ? count : '-';
-
-                    // 固定ペアにより必ず0になるセルかどうか
                     const isFixedZero = isUpperTriangle &&
                       isFixedPairZeroCell(i, j, fixedPairs, matrixType);
-
-                    // 非アクティブプレイヤーに関わるセル
                     const isInactive = !bothActive;
 
-                    // 背景色の決定
                     let bgColor: string;
                     if (!isUpperTriangle) {
                       bgColor = 'grey.200';
@@ -156,6 +142,8 @@ function renderMatrix(
                           bgcolor: bgColor,
                           color: isUpperTriangle && !isFixedZero && !isInactive && count > 2 ? 'white' : 'inherit',
                           opacity: isFixedZero ? 0.6 : isInactive && isUpperTriangle ? 0.3 : 1,
+                          minWidth: { xs: 28, sm: 36 },
+                          fontSize: { xs: '0.75rem', sm: '0.875rem' },
                         }}
                       >
                         {displayValue}
@@ -168,16 +156,19 @@ function renderMatrix(
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* モバイル横スクロールヒント */}
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.5, textAlign: 'center' }}
+      >
+        ← 横にスクロールできます →
+      </Typography>
     </>
   );
 }
 
-/**
- * 休憩回数をテーブルとして描画する
- *
- * @param restCounts - 休憩回数配列
- * @param activeSet - アクティブプレイヤーのセット
- */
 function renderRestCounts(restCounts: RestCounts, activeSet: Set<number>) {
   const activeRestCounts = restCounts.filter((_, i) => activeSet.has(i + 1));
   const maxCount = Math.max(...activeRestCounts, 1);
@@ -232,12 +223,10 @@ function renderRestCounts(restCounts: RestCounts, activeSet: Set<number>) {
 export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
   const [tabValue, setTabValue] = useState(0);
 
-  // アクティブプレイヤーのセット
   const activeSet = useMemo(() => {
     return new Set(schedule.activePlayers);
   }, [schedule.activePlayers]);
 
-  // カウント行列を計算
   const pairCounts = initializeCountMatrix(schedule.players);
   const oppoCounts = initializeCountMatrix(schedule.players);
   const restCounts = initializeRestCounts(schedule.players);
@@ -247,18 +236,17 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
     updateRestCounts(round, restCounts);
   }
 
-  // 休憩者がいるかどうか
   const hasRestingPlayers = schedule.rounds.some(
     (round) => round.restingPlayers && round.restingPlayers.length > 0
   );
 
   return (
-    <Paper elevation={3} sx={{ mb: 3 }}>
+    <Paper sx={{ mb: 3 }}>
       <Typography variant="h6" sx={{ p: 2, pb: 0 }}>
         統計情報
       </Typography>
 
-      <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ px: 2 }}>
+      <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ px: 2 }} aria-label="統計情報タブ">
         <Tab label="ペア回数" />
         <Tab label="対戦回数" />
         {hasRestingPlayers && <Tab label="休憩回数" />}
