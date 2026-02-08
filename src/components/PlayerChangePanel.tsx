@@ -3,10 +3,13 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
-  Paper,
   Select,
   Typography,
 } from '@mui/material';
@@ -15,6 +18,8 @@ import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import type { Schedule, RegenerationParams } from '../types/schedule';
 
 interface PlayerChangePanelProps {
+  open: boolean;
+  onClose: () => void;
   schedule: Schedule;
   completedRounds: Set<string>;
   isGenerating: boolean;
@@ -23,6 +28,8 @@ interface PlayerChangePanelProps {
 }
 
 export function PlayerChangePanel({
+  open,
+  onClose,
   schedule,
   completedRounds,
   isGenerating,
@@ -103,119 +110,121 @@ export function PlayerChangePanel({
     setPendingAdds([]);
     setPendingRemoves([]);
     setRemoveTarget('');
+    onClose();
   };
 
   const newRestingCount = Math.max(0, newActivePlayers.length - schedule.courts * 4);
 
   return (
-    <Paper sx={{ p: 3, mb: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        参加者の変更
-      </Typography>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>参加者の変更</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+          現在の参加者: {currentActivePlayers.join(', ')} ({currentActivePlayers.length}人)
+          {' / '}消化済み: {completedCount} / {totalRounds} ラウンド
+        </Typography>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        現在の参加者: {currentActivePlayers.join(', ')} ({currentActivePlayers.length}人)
-        {' / '}消化済み: {completedCount} / {totalRounds} ラウンド
-      </Typography>
-
-      {/* 追加・離脱コントロール */}
-      <Box sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        gap: 2,
-        mb: 2,
-        alignItems: { xs: 'stretch', sm: 'center' },
-      }}>
-        <Button
-          variant="outlined"
-          startIcon={<PersonAddIcon />}
-          onClick={handleAdd}
-          disabled={isGenerating}
-          size="small"
-        >
-          参加者を追加 (プレイヤー {nextPlayerNumber})
-        </Button>
-
-        {/* 離脱セレクト + ボタン */}
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
-            <InputLabel>離脱するプレイヤー</InputLabel>
-            <Select
-              value={removeTarget}
-              onChange={(e) => setRemoveTarget(e.target.value as number | '')}
-              label="離脱するプレイヤー"
-              disabled={isGenerating || removeCandidates.length === 0}
-            >
-              {removeCandidates.map(p => (
-                <MenuItem key={p} value={p}>プレイヤー {p}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        {/* 追加・離脱コントロール */}
+        <Box sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          mb: 2,
+        }}>
           <Button
             variant="outlined"
-            color="warning"
-            startIcon={<PersonRemoveIcon />}
-            onClick={handleRemove}
-            disabled={isGenerating || removeTarget === ''}
+            startIcon={<PersonAddIcon />}
+            onClick={handleAdd}
+            disabled={isGenerating}
             size="small"
           >
-            除外
+            参加者を追加 (プレイヤー {nextPlayerNumber})
           </Button>
-        </Box>
-      </Box>
 
-      {/* 変更内容の表示 */}
-      {hasPendingChanges && (
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>変更内容:</Typography>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {pendingAdds.map(p => (
-              <Chip
-                key={`add-${p}`}
-                label={`+ プレイヤー ${p}`}
-                color="success"
-                size="small"
-                onDelete={() => handleCancelAdd(p)}
-              />
-            ))}
-            {pendingRemoves.map(p => (
-              <Chip
-                key={`remove-${p}`}
-                label={`- プレイヤー ${p}`}
-                color="error"
-                size="small"
-                onDelete={() => handleCancelRemove(p)}
-              />
-            ))}
+          {/* 離脱セレクト + ボタン */}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <FormControl size="small" sx={{ flex: 1, minWidth: 160 }}>
+              <InputLabel>離脱するプレイヤー</InputLabel>
+              <Select
+                value={removeTarget}
+                onChange={(e) => setRemoveTarget(e.target.value as number | '')}
+                label="離脱するプレイヤー"
+                disabled={isGenerating || removeCandidates.length === 0}
+              >
+                {removeCandidates.map(p => (
+                  <MenuItem key={p} value={p}>プレイヤー {p}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<PersonRemoveIcon />}
+              onClick={handleRemove}
+              disabled={isGenerating || removeTarget === ''}
+              size="small"
+            >
+              除外
+            </Button>
           </Box>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            変更後: {newActivePlayers.length}人
-            {newRestingCount > 0 && ` (毎ラウンド ${newRestingCount}人が休憩)`}
-          </Typography>
-
-          {!playersEnough && (
-            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-              参加者数が{schedule.courts * 4}人以上必要です
-            </Typography>
-          )}
         </Box>
-      )}
 
-      {/* 再生成ボタン */}
-      <Button
-        variant="contained"
-        onClick={handleRegenerate}
-        disabled={!canRegenerate}
-        fullWidth
-      >
-        {remainingRounds > 0
-          ? `変更を適用してラウンド ${completedCount + 1}〜${totalRounds} を再生成`
-          : '変更を適用'}
-      </Button>
+        {/* 変更内容の表示 */}
+        {hasPendingChanges && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>変更内容:</Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {pendingAdds.map(p => (
+                <Chip
+                  key={`add-${p}`}
+                  label={`+ プレイヤー ${p}`}
+                  color="success"
+                  size="small"
+                  onDelete={() => handleCancelAdd(p)}
+                />
+              ))}
+              {pendingRemoves.map(p => (
+                <Chip
+                  key={`remove-${p}`}
+                  label={`- プレイヤー ${p}`}
+                  color="error"
+                  size="small"
+                  onDelete={() => handleCancelRemove(p)}
+                />
+              ))}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              変更後: {newActivePlayers.length}人
+              {newRestingCount > 0 && ` (毎ラウンド ${newRestingCount}人が休憩)`}
+            </Typography>
 
-      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-        ※消化済みラウンド（グレー行）は保持されます
-      </Typography>
-    </Paper>
+            {!playersEnough && (
+              <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                参加者数が{schedule.courts * 4}人以上必要です
+              </Typography>
+            )}
+          </Box>
+        )}
+
+        {/* 再生成ボタン */}
+        <Button
+          variant="contained"
+          onClick={handleRegenerate}
+          disabled={!canRegenerate}
+          fullWidth
+        >
+          {remainingRounds > 0
+            ? `変更を適用してラウンド ${completedCount + 1}〜${totalRounds} を再生成`
+            : '変更を適用'}
+        </Button>
+
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+          ※消化済みラウンド（グレー行）は保持されます
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>閉じる</Button>
+      </DialogActions>
+    </Dialog>
   );
 }

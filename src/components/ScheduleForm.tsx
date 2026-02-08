@@ -16,6 +16,7 @@ import {
 import TuneIcon from '@mui/icons-material/Tune';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import GroupIcon from '@mui/icons-material/Group';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import type { ScheduleParams, FixedPair } from '../types/schedule';
 import { useBenchmarkCalibration } from '../hooks/useBenchmarkCalibration';
 import { FixedPairsInput } from './FixedPairsInput';
@@ -24,9 +25,11 @@ import { validateFixedPairs } from '../utils/fixedPairs';
 interface ScheduleFormProps {
   onGenerate: (params: ScheduleParams) => void;
   isGenerating: boolean;
+  hasSchedule?: boolean;
+  onPlayerChangeClick?: () => void;
 }
 
-export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
+export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerChangeClick }: ScheduleFormProps) {
   const [courts, setCourts] = useState(2);
   const [players, setPlayers] = useState(8);
   const [rounds, setRounds] = useState(7);
@@ -103,7 +106,16 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
         <Typography variant="h6">
           スケジュール設定
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<PersonAddIcon />}
+            onClick={onPlayerChangeClick}
+            disabled={!hasSchedule}
+          >
+            参加者の変更
+          </Button>
           <Button
             variant="outlined"
             size="small"

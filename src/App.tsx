@@ -13,6 +13,7 @@ function App() {
   const displaySchedule = schedule ?? partialSchedule;
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
   const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
+  const [playerChangeOpen, setPlayerChangeOpen] = useState(false);
 
   // 新規生成か再生成かを区別するためのフラグ
   const isRegenerating = useRef(false);
@@ -60,7 +61,12 @@ function App() {
       </Typography>
 
       {/* 入力フォーム */}
-      <ScheduleForm onGenerate={handleGenerate} isGenerating={isGenerating} />
+      <ScheduleForm
+        onGenerate={handleGenerate}
+        isGenerating={isGenerating}
+        hasSchedule={!isGenerating && !!schedule && !!lastParams}
+        onPlayerChangeClick={() => setPlayerChangeOpen(true)}
+      />
 
       {/* 進捗付きローディング状態 */}
       {isGenerating && (
@@ -95,9 +101,11 @@ function App() {
             completedMatches={completedMatches}
             onToggleComplete={handleToggleComplete}
           />
-          {/* 参加者変更パネル */}
+          {/* 参加者変更ダイアログ */}
           {!isGenerating && schedule && lastParams && (
             <PlayerChangePanel
+              open={playerChangeOpen}
+              onClose={() => setPlayerChangeOpen(false)}
               schedule={schedule}
               completedRounds={completedMatches}
               isGenerating={isGenerating}
