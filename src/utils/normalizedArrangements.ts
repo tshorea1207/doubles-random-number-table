@@ -8,14 +8,54 @@
  * 使用時にplayerMapで実プレイヤー番号に変換する。
  * これにより、異なるプレイヤーサブセットで同一構造のキャッシュ重複を排除する。
  * （10人2コートの場合: 45エントリ → 1エントリ に削減）
+ *
+ * メモリ戦略:
+ * - 小規模（推定配置数 ≤ CACHE_THRESHOLD）: 配列にキャッシュ（高速な再利用）
+ * - 大規模（推定配置数 > CACHE_THRESHOLD）: ジェネレータで逐次生成（メモリ安全）
  */
 
 /**
- * 正規化配置テンプレートのキャッシュ
+ * キャッシュを使用する配置数の上限
+ * これを超える場合はジェネレータで逐次生成する
+ */
+const CACHE_THRESHOLD = 1_000_000;
+
+/**
+ * 正規化配置テンプレートのキャッシュ（小規模用）
  * キー: "courtsCount-playingCount" (例: "2-8")
  * 値: 0-basedインデックスの配置テンプレート配列
  */
 const arrangementCache = new Map<string, number[][]>();
+
+/**
+ * 階乗（n!）を計算する
+ */
+function factorial(n: number): number {
+  if (n <= 1) return 1;
+  let result = 1;
+  for (let i = 2; i <= n; i++) {
+    result *= i;
+  }
+  return result;
+}
+
+/**
+ * 正規化配置数を推定する
+ *
+ * 式: n! / (2^(3*courts) * courts!)
+ * - 2^(2*courts): 各ペア内の順序（ペア数 = 2*courts）
+ * - 2^courts: 各コート内のペア間の順序
+ * - courts!: コート間の順序
+ *
+ * @example
+ * estimateArrangementCount(2, 8) // 8! / (2^6 * 2!) = 40320 / 128 = 315
+ * estimateArrangementCount(4, 16) // 16! / (2^12 * 4!) ≈ 212,837,625
+ */
+export function estimateArrangementCount(courtsCount: number, playingCount: number): number {
+  const totalPermutations = factorial(playingCount);
+  const divisor = Math.pow(2, courtsCount * 3) * factorial(courtsCount);
+  return Math.floor(totalPermutations / divisor);
+}
 
 /**
  * 指定されたコート数とプレイ人数に対する全ての正規化配置テンプレートを取得する
@@ -28,20 +68,43 @@ const arrangementCache = new Map<string, number[][]>();
  * テンプレートは0-basedインデックスで格納される。
  * 使用時に playerMap[index] で実プレイヤー番号に変換すること。
  *
+ * 小規模の場合はキャッシュ配列、大規模の場合はジェネレータを返す。
+ * 消費側は for...of ループでどちらも同様に使用可能。
+ *
+ * 注意: 大規模ケース（ジェネレータ）では、yield された配列は内部で再利用される。
+ * 保持が必要な場合は消費側で .slice() すること。
+ *
  * @param courtsCount - コート数
  * @param playingCount - プレイするプレイヤー数
- * @returns 0-basedインデックスの正規化配置テンプレート配列
+ * @returns 0-basedインデックスの正規化配置テンプレートの Iterable
  *
  * @example
  * getNormalizedArrangements(2, 8)
- * // [[0,1,2,3,4,5,6,7], [0,1,2,4,3,5,6,7], ...] (315通り)
- * // 実際のプレイヤー番号に変換: playerMap = [1,3,4,5,7,8,9,10]
- * // template[i] → playerMap[template[i]]
+ * // 315通りのテンプレートを返す（キャッシュ配列）
+ *
+ * getNormalizedArrangements(4, 16)
+ * // 約2.1億通りのテンプレートをジェネレータで逐次生成
  */
 export function getNormalizedArrangements(
   courtsCount: number,
   playingCount: number
-): number[][] {
+): Iterable<number[]> {
+  const estimated = estimateArrangementCount(courtsCount, playingCount);
+
+  if (estimated <= CACHE_THRESHOLD) {
+    // 小規模: キャッシュ配列を使用
+    return getCachedArrangements(courtsCount, playingCount);
+  }
+
+  // 大規模: ジェネレータで逐次生成（毎回新しいジェネレータを返す）
+  const indices = Array.from({ length: playingCount }, (_, i) => i);
+  return generateNormalizedRecursiveGen(indices, courtsCount, []);
+}
+
+/**
+ * 小規模用: キャッシュされた配置配列を取得する
+ */
+function getCachedArrangements(courtsCount: number, playingCount: number): number[][] {
   const cacheKey = `${courtsCount}-${playingCount}`;
 
   const cached = arrangementCache.get(cacheKey);
@@ -49,10 +112,7 @@ export function getNormalizedArrangements(
     return cached;
   }
 
-  // 0-basedインデックスの初期配列 [0, 1, ..., playingCount-1]
   const indices = Array.from({ length: playingCount }, (_, i) => i);
-
-  // 直接構築アルゴリズムで正規化配置テンプレートを生成
   const results: number[][] = [];
   generateNormalizedRecursive(indices, courtsCount, [], results);
 
@@ -61,7 +121,7 @@ export function getNormalizedArrangements(
 }
 
 /**
- * 再帰的に正規化制約を満たす配置のみを構築する
+ * 再帰的に正規化制約を満たす配置のみを構築する（配列蓄積版）
  *
  * アルゴリズム:
  * 1. 利用可能なプレイヤーから最小のプレイヤーをpairAのplayer1に固定
@@ -113,6 +173,56 @@ function generateNormalizedRecursive(
       generateNormalizedRecursive(rest, remainingCourts - 1, current, results);
 
       // バックトラック
+      current.pop();
+      current.pop();
+      current.pop();
+      current.pop();
+    }
+  }
+}
+
+/**
+ * 再帰的に正規化制約を満たす配置のみを構築する（ジェネレータ版）
+ *
+ * generateNormalizedRecursive と同じアルゴリズムだが、
+ * results 配列に蓄積する代わりに yield で1件ずつ返す。
+ * メモリ使用量: O(playingCount) の再帰スタックのみ。
+ *
+ * 注意: yield される配列は内部の current 配列への参照。
+ * 次の yield で内容が変わるため、保持する場合は .slice() でコピーすること。
+ *
+ * @param available - 未使用プレイヤー（昇順ソート済み）
+ * @param remainingCourts - 残りコート数
+ * @param current - 構築中の配置（内部で再利用）
+ */
+function* generateNormalizedRecursiveGen(
+  available: number[],
+  remainingCourts: number,
+  current: number[]
+): Generator<number[]> {
+  // 全コート構築完了
+  if (remainingCourts === 0) {
+    yield current;
+    return;
+  }
+
+  // 利用可能なプレイヤーが不足
+  if (available.length < 4) {
+    return;
+  }
+
+  const pairA_p1 = available[0];
+  const remainingAfterP1 = available.slice(1);
+
+  for (let i = 0; i < remainingAfterP1.length; i++) {
+    const pairA_p2 = remainingAfterP1[i];
+    const remainingAfterPairA = remainingAfterP1.filter((_, idx) => idx !== i);
+
+    for (const [pairB_p1, pairB_p2, rest] of choosePairB(remainingAfterPairA)) {
+      current.push(pairA_p1, pairA_p2, pairB_p1, pairB_p2);
+
+      yield* generateNormalizedRecursiveGen(rest, remainingCourts - 1, current);
+
       current.pop();
       current.pop();
       current.pop();

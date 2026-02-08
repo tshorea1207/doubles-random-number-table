@@ -4,19 +4,7 @@ import { createInitialArrangement, generateRestingCandidates } from '../utils/pe
 import { arrangementToRoundWithRest } from '../utils/normalization';
 import { initializeRestCounts, createCumulativeState, commitRoundToState, evaluateCandidate, evaluateFromState } from '../utils/evaluation';
 import { satisfiesFixedPairs } from '../utils/fixedPairs';
-import { getNormalizedArrangements } from '../utils/normalizedArrangements';
-
-/**
- * 階乗（n!）を計算する
- */
-function factorial(n: number): number {
-  if (n <= 1) return 1;
-  let result = 1;
-  for (let i = 2; i <= n; i++) {
-    result *= i;
-  }
-  return result;
-}
+import { getNormalizedArrangements, estimateArrangementCount } from '../utils/normalizedArrangements';
 
 /**
  * 二項係数 C(n, k) を計算する
@@ -35,11 +23,10 @@ function binomial(n: number, k: number): number {
  * 与えられたパラメータに対する正規化された配列の数を推定する
  *
  * 休憩者なしの場合:
- *   式: n! / ((2^courts) * (2^(2*courts)) * courts!)
- *   - n! = 全順列数
- *   - 2^courts = ペア順序の正規化
- *   - 2^(2*courts) = マッチペア順序の正規化
- *   - courts! = コート順序の正規化
+ *   式: n! / (2^(3*courts) * courts!)
+ *   - 2^(2*courts): 各ペア内のプレイヤー順序
+ *   - 2^courts: 各コート内のペア間順序
+ *   - courts!: コート間の順序
  *
  * 休憩者ありの場合:
  *   式: C(n, restCount) * playingCount! / divisor
@@ -47,7 +34,7 @@ function binomial(n: number, k: number): number {
  *   - playingCount = プレイする人数 = courts * 4
  *
  * 例: 2コート、8人（休憩なし）
- * 8! / (2^2 * 2^4 * 2!) = 40320 / (4 * 16 * 2) = 40320 / 128 = 315
+ * 8! / (2^6 * 2!) = 40320 / (64 * 2) = 40320 / 128 = 315
  *
  * 例: 2コート、10人（2人休憩）
  * C(10, 2) * 315 = 45 * 315 = 14,175
@@ -56,11 +43,8 @@ function estimateNormalizedCount(playersCount: number, courtsCount: number): num
   const playingCount = courtsCount * 4;
   const restCount = playersCount - playingCount;
 
-  // プレイする人数に対する正規化配列数
-  const playingPermutations = factorial(playingCount);
-  const pairOrderDivisor = Math.pow(2, courtsCount * 2); // 各ペアは入れ替え可能
-  const courtOrderDivisor = factorial(courtsCount);
-  const normalizedPerSelection = Math.floor(playingPermutations / (pairOrderDivisor * courtOrderDivisor));
+  // プレイする人数に対する正規化配列数（normalizedArrangements.ts と共通の計算式を使用）
+  const normalizedPerSelection = estimateArrangementCount(courtsCount, playingCount);
 
   if (restCount <= 0) {
     // 休憩者なし
