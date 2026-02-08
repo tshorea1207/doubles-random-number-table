@@ -63,10 +63,11 @@ export interface Evaluation {
  */
 export interface Schedule {
   courts: number;       // コート数
-  players: number;      // プレイヤーの総数
+  players: number;      // 最大プレイヤー番号（行列サイズ用）
   rounds: Round[];      // スケジュールの全ラウンド
   evaluation: Evaluation; // 品質指標
   fixedPairs: FixedPair[]; // 固定ペアのリスト
+  activePlayers: number[]; // 現在アクティブなプレイヤー番号（ソート済み）
 }
 
 /**
@@ -115,6 +116,18 @@ export interface CumulativeState {
   restSum: number;           // 休憩回数の合計
   restSumSq: number;         // 休憩回数の二乗和
   restN: number;             // プレイヤー数
+}
+
+/**
+ * 参加者変更後の残りラウンド再生成パラメータ
+ */
+export interface RegenerationParams {
+  courtsCount: number;
+  completedRounds: Round[];       // 消化済みラウンド（保持する）
+  activePlayers: number[];        // 新しいアクティブプレイヤー（ソート済み）
+  remainingRoundsCount: number;   // 再生成するラウンド数
+  weights: { w1: number; w2: number; w3: number };
+  fixedPairs: FixedPair[];
 }
 
 /**

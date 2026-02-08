@@ -273,6 +273,107 @@ export function commitRoundToState(state: CumulativeState, round: Round): void {
 }
 
 /**
+ * 消化済みラウンドからアクティブプレイヤーのみの累積状態を構築する
+ *
+ * 参加者の途中追加/離脱後に残りラウンドを再生成する際に使用。
+ * 除外されたプレイヤーとのペア/対戦は無視し、アクティブプレイヤー間の
+ * 相互作用のみを集計する。新規プレイヤーは全カウント0で開始する。
+ *
+ * @param completedRounds - 消化済みラウンド（保持する）
+ * @param activePlayers - 現在アクティブなプレイヤー番号（ソート済み）
+ * @param maxPlayerNumber - 最大プレイヤー番号（行列サイズ決定用）
+ * @returns アクティブプレイヤーのみを反映した累積状態
+ *
+ * 計算量: O(completedRounds * courts + activePlayers²)
+ */
+export function buildCumulativeStateForActivePlayers(
+  completedRounds: Round[],
+  activePlayers: number[],
+  maxPlayerNumber: number
+): CumulativeState {
+  const activeSet = new Set(activePlayers);
+  const n = activePlayers.length;
+  const pairN = n * (n - 1) / 2;
+
+  // maxPlayerNumber サイズの行列を初期化（player-1 インデックスが機能するため）
+  const pairCounts = initializeCountMatrix(maxPlayerNumber);
+  const oppoCounts = initializeCountMatrix(maxPlayerNumber);
+  const restCounts = initializeRestCounts(maxPlayerNumber);
+
+  // 消化済みラウンドからカウントを集計（アクティブプレイヤーのみ）
+  for (const round of completedRounds) {
+    for (const match of round.matches) {
+      const { pairA, pairB } = match;
+
+      // ペア回数: 両プレイヤーが active の場合のみ
+      if (activeSet.has(pairA.player1) && activeSet.has(pairA.player2)) {
+        pairCounts[pairA.player1 - 1][pairA.player2 - 1]++;
+        pairCounts[pairA.player2 - 1][pairA.player1 - 1]++;
+      }
+      if (activeSet.has(pairB.player1) && activeSet.has(pairB.player2)) {
+        pairCounts[pairB.player1 - 1][pairB.player2 - 1]++;
+        pairCounts[pairB.player2 - 1][pairB.player1 - 1]++;
+      }
+
+      // 対戦回数: 両プレイヤーが active の場合のみ
+      const playersA = [pairA.player1, pairA.player2];
+      const playersB = [pairB.player1, pairB.player2];
+      for (const pa of playersA) {
+        for (const pb of playersB) {
+          if (activeSet.has(pa) && activeSet.has(pb)) {
+            oppoCounts[pa - 1][pb - 1]++;
+            oppoCounts[pb - 1][pa - 1]++;
+          }
+        }
+      }
+    }
+
+    // 休憩回数: アクティブプレイヤーのみ
+    for (const player of round.restingPlayers) {
+      if (activeSet.has(player)) {
+        restCounts[player - 1]++;
+      }
+    }
+  }
+
+  // アクティブプレイヤーのペアのみから sum/sumSq を計算
+  let pairSum = 0, pairSumSq = 0;
+  let oppoSum = 0, oppoSumSq = 0;
+  let restSum = 0, restSumSq = 0;
+
+  for (let idx = 0; idx < activePlayers.length; idx++) {
+    const i = activePlayers[idx] - 1;
+    for (let jdx = idx + 1; jdx < activePlayers.length; jdx++) {
+      const j = activePlayers[jdx] - 1;
+      pairSum += pairCounts[i][j];
+      pairSumSq += pairCounts[i][j] ** 2;
+      oppoSum += oppoCounts[i][j];
+      oppoSumSq += oppoCounts[i][j] ** 2;
+    }
+  }
+
+  for (const p of activePlayers) {
+    restSum += restCounts[p - 1];
+    restSumSq += restCounts[p - 1] ** 2;
+  }
+
+  return {
+    pairCounts,
+    oppoCounts,
+    restCounts,
+    pairSum,
+    pairSumSq,
+    pairN,
+    oppoSum,
+    oppoSumSq,
+    oppoN: pairN,
+    restSum,
+    restSumSq,
+    restN: n,
+  };
+}
+
+/**
  * 候補配置のスコアを累積状態から増分計算する（状態を変更しない）
  *
  * 累積状態の現在のカウント値を読み取り、候補ラウンドを追加した場合の

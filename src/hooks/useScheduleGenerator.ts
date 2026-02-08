@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
-import type { Schedule, ScheduleParams, Round, GenerationProgress, FixedPair, CumulativeState } from '../types/schedule';
+import type { Schedule, ScheduleParams, Round, GenerationProgress, FixedPair, CumulativeState, RegenerationParams } from '../types/schedule';
 import { createInitialArrangement, generateRestingCandidates } from '../utils/permutation';
 import { arrangementToRoundWithRest } from '../utils/normalization';
-import { initializeRestCounts, createCumulativeState, commitRoundToState, evaluateCandidate, evaluateFromState } from '../utils/evaluation';
+import { initializeRestCounts, createCumulativeState, commitRoundToState, evaluateCandidate, evaluateFromState, buildCumulativeStateForActivePlayers } from '../utils/evaluation';
 import { satisfiesFixedPairs } from '../utils/fixedPairs';
 import { getNormalizedArrangements, estimateArrangementCount } from '../utils/normalizedArrangements';
 
@@ -349,6 +349,7 @@ export function generateSchedule(params: ScheduleParams): Schedule {
     rounds,
     evaluation,
     fixedPairs,
+    activePlayers: allPlayers,
   };
 }
 
@@ -445,6 +446,109 @@ export async function generateScheduleAsync(
     rounds,
     evaluation,
     fixedPairs,
+    activePlayers: allPlayers,
+  };
+}
+
+/**
+ * 参加者変更後に残りラウンドを再生成する
+ *
+ * 消化済みラウンドを保持し、新しいアクティブプレイヤーセットで
+ * 累積状態を再構築してから残りラウンドを貪欲法で生成する。
+ *
+ * @param params - 再生成パラメータ
+ * @param onProgress - 進捗更新のコールバック
+ * @param onRoundComplete - ラウンド確定時のコールバック
+ * @returns 消化済み + 新規ラウンドを含む完全なスケジュール
+ */
+export async function generateRemainingScheduleAsync(
+  params: RegenerationParams,
+  onProgress: (progress: GenerationProgress) => void,
+  onRoundComplete?: (rounds: Round[], roundNumber: number) => void
+): Promise<Schedule> {
+  const { courtsCount, completedRounds, activePlayers, remainingRoundsCount, weights, fixedPairs } = params;
+
+  // バリデーション
+  if (activePlayers.length < courtsCount * 4) {
+    throw new Error(`参加者数（${activePlayers.length}人）がコート数（${courtsCount}面）に必要な${courtsCount * 4}人を下回っています`);
+  }
+
+  const maxPlayerNumber = Math.max(...activePlayers);
+  const allRounds: Round[] = [...completedRounds];
+
+  // 消化済みラウンドからアクティブプレイヤーのみの累積状態を構築
+  const cumulativeState = buildCumulativeStateForActivePlayers(
+    completedRounds, activePlayers, maxPlayerNumber
+  );
+
+  const startRound = completedRounds.length + 1;
+  const totalRounds = completedRounds.length + remainingRoundsCount;
+  const normalizedCount = estimateNormalizedCount(activePlayers.length, courtsCount);
+  const totalEvaluations = normalizedCount * remainingRoundsCount;
+  let currentEvaluations = 0;
+
+  // 初期進捗を報告
+  onProgress({
+    currentEvaluations: 0,
+    totalEvaluations,
+    percentage: 0,
+    currentRound: startRound,
+    totalRounds,
+  });
+
+  // 残りラウンドを生成
+  for (let i = 0; i < remainingRoundsCount; i++) {
+    const roundNumber = startRound + i;
+
+    // ラウンド間でUIスレッドに譲る
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const bestRound = await findBestNextRoundAsync(
+      cumulativeState,
+      roundNumber,
+      activePlayers,
+      courtsCount,
+      weights,
+      fixedPairs,
+      (roundEvaluations: number) => {
+        const prevEvals = normalizedCount * i;
+        currentEvaluations = prevEvals + roundEvaluations;
+        const percentage = Math.round((currentEvaluations / totalEvaluations) * 100);
+
+        onProgress({
+          currentEvaluations,
+          totalEvaluations,
+          percentage,
+          currentRound: roundNumber,
+          totalRounds,
+        });
+      }
+    );
+
+    allRounds.push(bestRound);
+    commitRoundToState(cumulativeState, bestRound);
+    onRoundComplete?.([...allRounds], roundNumber);
+  }
+
+  // 累積状態から最終評価を計算
+  const evaluation = evaluateFromState(cumulativeState, weights);
+
+  // 完了を報告
+  onProgress({
+    currentEvaluations: totalEvaluations,
+    totalEvaluations,
+    percentage: 100,
+    currentRound: totalRounds,
+    totalRounds,
+  });
+
+  return {
+    courts: courtsCount,
+    players: maxPlayerNumber,
+    rounds: allRounds,
+    evaluation,
+    fixedPairs,
+    activePlayers,
   };
 }
 
@@ -487,12 +591,14 @@ export function useScheduleGenerator() {
         setProgress(progressUpdate);
       },
       (confirmedRounds) => {
+        const allPlayers = Array.from({ length: params.playersCount }, (_, i) => i + 1);
         setPartialSchedule({
           courts: params.courtsCount,
           players: params.playersCount,
           rounds: confirmedRounds,
           evaluation: { pairStdDev: 0, oppoStdDev: 0, restStdDev: 0, totalScore: 0 },
           fixedPairs: params.fixedPairs,
+          activePlayers: allPlayers,
         });
       }
     )
@@ -509,5 +615,40 @@ export function useScheduleGenerator() {
       });
   }, []);
 
-  return { schedule, isGenerating, progress, error, generate, partialSchedule };
+  // 参加者変更後の残りラウンド再生成
+  const regenerate = useCallback((params: RegenerationParams) => {
+    setIsGenerating(true);
+    setError(null);
+    setProgress(null);
+
+    generateRemainingScheduleAsync(
+      params,
+      (progressUpdate) => {
+        setProgress(progressUpdate);
+      },
+      (confirmedRounds) => {
+        setPartialSchedule({
+          courts: params.courtsCount,
+          players: Math.max(...params.activePlayers),
+          rounds: confirmedRounds,
+          evaluation: { pairStdDev: 0, oppoStdDev: 0, restStdDev: 0, totalScore: 0 },
+          fixedPairs: params.fixedPairs,
+          activePlayers: params.activePlayers,
+        });
+      }
+    )
+      .then((result) => {
+        setSchedule(result);
+        setPartialSchedule(null);
+        setIsGenerating(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : '再生成に失敗しました');
+        setIsGenerating(false);
+        setProgress(null);
+        setPartialSchedule(null);
+      });
+  }, []);
+
+  return { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule };
 }

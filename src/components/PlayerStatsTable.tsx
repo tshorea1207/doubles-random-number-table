@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -75,16 +75,18 @@ interface PlayerStatsTableProps {
  *
  * @param matrix - カウント行列
  * @param title - テーブルのタイトル
- * @param playersCount - プレイヤー数
+ * @param playersCount - プレイヤー数（行列サイズ）
  * @param fixedPairs - 固定ペアの配列
  * @param matrixType - 'pair'（ペア回数）または 'opponent'（対戦回数）
+ * @param activeSet - アクティブプレイヤーのセット
  */
 function renderMatrix(
   matrix: CountMatrix,
   title: string,
   playersCount: number,
   fixedPairs: FixedPair[],
-  matrixType: 'pair' | 'opponent'
+  matrixType: 'pair' | 'opponent',
+  activeSet: Set<number>
 ) {
   return (
     <>
@@ -99,59 +101,70 @@ function renderMatrix(
               <TableCell>
                 <strong>プレイヤー</strong>
               </TableCell>
-              {Array.from({ length: playersCount }, (_, i) => (
-                <TableCell key={i} align="center">
-                  <strong>{i + 1}</strong>
-                </TableCell>
-              ))}
+              {Array.from({ length: playersCount }, (_, i) => {
+                const isActive = activeSet.has(i + 1);
+                return (
+                  <TableCell key={i} align="center" sx={{ opacity: isActive ? 1 : 0.3 }}>
+                    <strong>{i + 1}</strong>
+                  </TableCell>
+                );
+              })}
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {matrix.map((row, i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <strong>{i + 1}</strong>
-                </TableCell>
-                {row.map((count, j) => {
-                  // 上三角（i < j）のみ表示
-                  // 対角線と下三角は '-' として表示
-                  const isUpperTriangle = i < j;
-                  const displayValue = isUpperTriangle ? count : '-';
+            {matrix.map((row, i) => {
+              const rowActive = activeSet.has(i + 1);
+              return (
+                <TableRow key={i} sx={{ opacity: rowActive ? 1 : 0.3 }}>
+                  <TableCell>
+                    <strong>{i + 1}</strong>
+                  </TableCell>
+                  {row.map((count, j) => {
+                    const colActive = activeSet.has(j + 1);
+                    const bothActive = rowActive && colActive;
 
-                  // 固定ペアにより必ず0になるセルかどうか
-                  const isFixedZero = isUpperTriangle &&
-                    isFixedPairZeroCell(i, j, fixedPairs, matrixType);
+                    // 上三角（i < j）のみ表示
+                    // 対角線と下三角は '-' として表示
+                    const isUpperTriangle = i < j;
+                    const displayValue = isUpperTriangle ? count : '-';
 
-                  // 背景色の決定
-                  let bgColor: string;
-                  if (!isUpperTriangle) {
-                    // 対角線と下三角
-                    bgColor = 'grey.200';
-                  } else if (isFixedZero) {
-                    // 固定ペアにより必ず0（グレーアウト）
-                    bgColor = 'grey.300';
-                  } else {
-                    // 通常の上三角セル（カウントに基づく色の濃さ）
-                    bgColor = `rgba(25, 118, 210, ${Math.min(count * 0.15, 0.7)})`;
-                  }
+                    // 固定ペアにより必ず0になるセルかどうか
+                    const isFixedZero = isUpperTriangle &&
+                      isFixedPairZeroCell(i, j, fixedPairs, matrixType);
 
-                  return (
-                    <TableCell
-                      key={j}
-                      align="center"
-                      sx={{
-                        bgcolor: bgColor,
-                        color: isUpperTriangle && !isFixedZero && count > 2 ? 'white' : 'inherit',
-                        opacity: isFixedZero ? 0.6 : 1,
-                      }}
-                    >
-                      {displayValue}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            ))}
+                    // 非アクティブプレイヤーに関わるセル
+                    const isInactive = !bothActive;
+
+                    // 背景色の決定
+                    let bgColor: string;
+                    if (!isUpperTriangle) {
+                      bgColor = 'grey.200';
+                    } else if (isInactive) {
+                      bgColor = 'grey.100';
+                    } else if (isFixedZero) {
+                      bgColor = 'grey.300';
+                    } else {
+                      bgColor = `rgba(25, 118, 210, ${Math.min(count * 0.15, 0.7)})`;
+                    }
+
+                    return (
+                      <TableCell
+                        key={j}
+                        align="center"
+                        sx={{
+                          bgcolor: bgColor,
+                          color: isUpperTriangle && !isFixedZero && !isInactive && count > 2 ? 'white' : 'inherit',
+                          opacity: isFixedZero ? 0.6 : isInactive && isUpperTriangle ? 0.3 : 1,
+                        }}
+                      >
+                        {displayValue}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -163,10 +176,11 @@ function renderMatrix(
  * 休憩回数をテーブルとして描画する
  *
  * @param restCounts - 休憩回数配列
- * @param playersCount - プレイヤー数
+ * @param activeSet - アクティブプレイヤーのセット
  */
-function renderRestCounts(restCounts: RestCounts, _playersCount: number) {
-  const maxCount = Math.max(...restCounts, 1);
+function renderRestCounts(restCounts: RestCounts, activeSet: Set<number>) {
+  const activeRestCounts = restCounts.filter((_, i) => activeSet.has(i + 1));
+  const maxCount = Math.max(...activeRestCounts, 1);
 
   return (
     <>
@@ -188,21 +202,26 @@ function renderRestCounts(restCounts: RestCounts, _playersCount: number) {
           </TableHead>
 
           <TableBody>
-            {restCounts.map((count, i) => (
-              <TableRow key={i}>
-                <TableCell>
-                  <strong>{i + 1}</strong>
-                </TableCell>
-                <TableCell
-                  align="center"
-                  sx={{
-                    bgcolor: `rgba(255, 152, 0, ${Math.min(count / maxCount * 0.6, 0.6)})`,
-                  }}
-                >
-                  {count}
-                </TableCell>
-              </TableRow>
-            ))}
+            {restCounts.map((count, i) => {
+              const isActive = activeSet.has(i + 1);
+              return (
+                <TableRow key={i} sx={{ opacity: isActive ? 1 : 0.3 }}>
+                  <TableCell>
+                    <strong>{i + 1}</strong>
+                  </TableCell>
+                  <TableCell
+                    align="center"
+                    sx={{
+                      bgcolor: isActive
+                        ? `rgba(255, 152, 0, ${Math.min(count / maxCount * 0.6, 0.6)})`
+                        : 'grey.100',
+                    }}
+                  >
+                    {count}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
@@ -212,6 +231,11 @@ function renderRestCounts(restCounts: RestCounts, _playersCount: number) {
 
 export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
   const [tabValue, setTabValue] = useState(0);
+
+  // アクティブプレイヤーのセット
+  const activeSet = useMemo(() => {
+    return new Set(schedule.activePlayers);
+  }, [schedule.activePlayers]);
 
   // カウント行列を計算
   const pairCounts = initializeCountMatrix(schedule.players);
@@ -242,11 +266,11 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
 
       <Box sx={{ mt: 1 }}>
         {tabValue === 0 &&
-          renderMatrix(pairCounts, 'プレイヤー間のペア回数', schedule.players, schedule.fixedPairs, 'pair')}
+          renderMatrix(pairCounts, 'プレイヤー間のペア回数', schedule.players, schedule.fixedPairs, 'pair', activeSet)}
         {tabValue === 1 &&
-          renderMatrix(oppoCounts, 'プレイヤー間の対戦回数', schedule.players, schedule.fixedPairs, 'opponent')}
+          renderMatrix(oppoCounts, 'プレイヤー間の対戦回数', schedule.players, schedule.fixedPairs, 'opponent', activeSet)}
         {tabValue === 2 && hasRestingPlayers &&
-          renderRestCounts(restCounts, schedule.players)}
+          renderRestCounts(restCounts, activeSet)}
       </Box>
 
       {/* 凡例 */}
@@ -258,9 +282,17 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
               {schedule.fixedPairs.length > 0 && (
                 <> グレーのセルは固定ペアにより必ず0になる組み合わせです。</>
               )}
+              {activeSet.size < schedule.players && (
+                <> 薄い行/列は離脱したプレイヤーです。</>
+              )}
             </>
           ) : (
-            <>色が濃いほど休憩回数が多いです。理想的には全員が均等に休憩します。</>
+            <>
+              色が濃いほど休憩回数が多いです。理想的には全員が均等に休憩します。
+              {activeSet.size < schedule.players && (
+                <> 薄い行は離脱したプレイヤーです。</>
+              )}
+            </>
           )}
         </Typography>
       </Box>

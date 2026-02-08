@@ -180,8 +180,10 @@ export function* generateRestingCandidates(
     return;
   }
 
-  const minRest = Math.min(...restCounts);
-  const maxRest = Math.max(...restCounts);
+  // allPlayers のプレイヤーのみの休憩回数を参照（非連続プレイヤー番号対応）
+  const activeRestValues = allPlayers.map(p => restCounts[p - 1]);
+  const minRest = Math.min(...activeRestValues);
+  const maxRest = Math.max(...activeRestValues);
   const diff = maxRest - minRest;
 
   if (diff >= 2) {

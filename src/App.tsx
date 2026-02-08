@@ -1,15 +1,21 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Container, Typography, Box, LinearProgress } from '@mui/material';
 import { useScheduleGenerator } from './hooks/useScheduleGenerator';
 import { ScheduleForm } from './components/ScheduleForm';
 import { ScheduleTable } from './components/ScheduleTable';
 import { EvaluationDisplay } from './components/EvaluationDisplay';
 import { PlayerStatsTable } from './components/PlayerStatsTable';
+import { PlayerChangePanel } from './components/PlayerChangePanel';
+import type { ScheduleParams, RegenerationParams } from './types/schedule';
 
 function App() {
-  const { schedule, isGenerating, progress, error, generate, partialSchedule } = useScheduleGenerator();
+  const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule } = useScheduleGenerator();
   const displaySchedule = schedule ?? partialSchedule;
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
+  const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
+
+  // 新規生成か再生成かを区別するためのフラグ
+  const isRegenerating = useRef(false);
 
   // トグルハンドラー
   const handleToggleComplete = useCallback((matchId: string) => {
@@ -24,12 +30,23 @@ function App() {
     });
   }, []);
 
-  // 生成開始時に消化済み状態をリセット
+  // 新規生成時のみ消化済み状態をリセット（再生成時は保持）
   useEffect(() => {
-    if (isGenerating) {
+    if (isGenerating && !isRegenerating.current) {
       setCompletedMatches(new Set());
     }
   }, [isGenerating]);
+
+  const handleGenerate = useCallback((params: ScheduleParams) => {
+    setLastParams(params);
+    isRegenerating.current = false;
+    generate(params);
+  }, [generate]);
+
+  const handleRegenerate = useCallback((params: RegenerationParams) => {
+    isRegenerating.current = true;
+    regenerate(params);
+  }, [regenerate]);
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -43,7 +60,7 @@ function App() {
       </Typography>
 
       {/* 入力フォーム */}
-      <ScheduleForm onGenerate={generate} isGenerating={isGenerating} />
+      <ScheduleForm onGenerate={handleGenerate} isGenerating={isGenerating} />
 
       {/* 進捗付きローディング状態 */}
       {isGenerating && (
@@ -78,6 +95,16 @@ function App() {
             completedMatches={completedMatches}
             onToggleComplete={handleToggleComplete}
           />
+          {/* 参加者変更パネル */}
+          {!isGenerating && schedule && lastParams && (
+            <PlayerChangePanel
+              schedule={schedule}
+              completedRounds={completedMatches}
+              isGenerating={isGenerating}
+              weights={lastParams.weights}
+              onRegenerate={handleRegenerate}
+            />
+          )}
           {!isGenerating && schedule && (
             <PlayerStatsTable schedule={schedule} />
           )}
