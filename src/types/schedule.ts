@@ -99,6 +99,25 @@ export interface ScheduleParams {
 export type RestCounts = number[];
 
 /**
+ * 増分評価のための累積状態
+ * ラウンド追加時に差分のみ更新することで、評価コストをO(rounds×courts)からO(courts)に削減
+ */
+export interface CumulativeState {
+  pairCounts: CountMatrix;   // 累積ペア回数行列
+  oppoCounts: CountMatrix;   // 累積対戦回数行列
+  restCounts: RestCounts;    // 累積休憩回数配列
+  pairSum: number;           // ペア回数上三角要素の合計
+  pairSumSq: number;         // ペア回数上三角要素の二乗和
+  pairN: number;             // ペア回数上三角要素数 = N*(N-1)/2
+  oppoSum: number;           // 対戦回数上三角要素の合計
+  oppoSumSq: number;         // 対戦回数上三角要素の二乗和
+  oppoN: number;             // 対戦回数上三角要素数 = N*(N-1)/2
+  restSum: number;           // 休憩回数の合計
+  restSumSq: number;         // 休憩回数の二乗和
+  restN: number;             // プレイヤー数
+}
+
+/**
  * スケジュール生成中の進捗情報（評価ベース）
  */
 export interface GenerationProgress {
