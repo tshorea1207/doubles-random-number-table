@@ -7,7 +7,13 @@ import {
   Typography,
   Paper,
   Grid,
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import type { ScheduleParams, FixedPair } from '../types/schedule';
 import { useBenchmarkCalibration } from '../hooks/useBenchmarkCalibration';
 import { FixedPairsInput } from './FixedPairsInput';
@@ -26,6 +32,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const [w2, setW2] = useState(0.5);
   const [w3, setW3] = useState(2.0);
   const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
+  const [helpTarget, setHelpTarget] = useState<'w1' | 'w2' | 'w3' | null>(null);
 
   // ハードウェア性能に基づく動的キャリブレーション係数
   const { coefficient } = useBenchmarkCalibration();
@@ -140,9 +147,14 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
 
           {/* 重み W1 */}
           <Grid item xs={12} sm={4}>
-            <Typography gutterBottom>
-              重み W1 (ペア回数): {w1.toFixed(1)}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography gutterBottom sx={{ mb: 0 }}>
+                重み W1 (ペア回数): {w1.toFixed(1)}
+              </Typography>
+              <IconButton size="small" onClick={() => setHelpTarget('w1')} sx={{ ml: 0.5 }}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Box>
             <Slider
               value={w1}
               onChange={(_, value) => setW1(value as number)}
@@ -159,9 +171,14 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
 
           {/* 重み W2 */}
           <Grid item xs={12} sm={4}>
-            <Typography gutterBottom>
-              重み W2 (対戦回数): {w2.toFixed(1)}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography gutterBottom sx={{ mb: 0 }}>
+                重み W2 (対戦回数): {w2.toFixed(1)}
+              </Typography>
+              <IconButton size="small" onClick={() => setHelpTarget('w2')} sx={{ ml: 0.5 }}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Box>
             <Slider
               value={w2}
               onChange={(_, value) => setW2(value as number)}
@@ -178,9 +195,14 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
 
           {/* 重み W3 */}
           <Grid item xs={12} sm={4}>
-            <Typography gutterBottom>
-              重み W3 (休憩回数): {w3.toFixed(1)}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography gutterBottom sx={{ mb: 0 }}>
+                重み W3 (休憩回数): {w3.toFixed(1)}
+              </Typography>
+              <IconButton size="small" onClick={() => setHelpTarget('w3')} sx={{ ml: 0.5 }}>
+                <HelpOutlineIcon fontSize="small" />
+              </IconButton>
+            </Box>
             <Slider
               value={w3}
               onChange={(_, value) => setW3(value as number)}
@@ -232,6 +254,47 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
           推奨: 2面コート。3面以上は計算時間が増加します。
         </Typography>
       </Box>
+
+      {/* 重み解説ダイアログ */}
+      <Dialog open={helpTarget !== null} onClose={() => setHelpTarget(null)}>
+        <DialogTitle>
+          {helpTarget === 'w1' && 'W1（ペア回数）について'}
+          {helpTarget === 'w2' && 'W2（対戦回数）について'}
+          {helpTarget === 'w3' && 'W3（休憩回数）について'}
+        </DialogTitle>
+        <DialogContent>
+          {helpTarget === 'w1' && (
+            <Typography>
+              同じ人とペアを組む回数の偏りをどれだけ重視するかを設定します。
+              値を大きくすると、全員がなるべく均等にペアを組むことが優先されます。
+              <br /><br />推奨値: 1.0
+            </Typography>
+          )}
+          {helpTarget === 'w2' && (
+            <Typography>
+              同じ人と対戦する回数の偏りをどれだけ重視するかを設定します。
+              値を大きくすると、全員がなるべく均等に対戦することが優先されます。
+              <br /><br />推奨値: 0.5
+            </Typography>
+          )}
+          {helpTarget === 'w3' && (
+            <Typography>
+              休憩する回数の偏りをどれだけ重視するかを設定します。
+              値を大きくすると、全員がなるべく均等に休憩することが優先されます。
+              <br /><br />
+              ※参加人数がコート数×4と等しい場合は休憩者がいないため無効です。
+              <br /><br />推奨値: 2.0
+            </Typography>
+          )}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
+            計算式: 総合スコア = ペア偏差×W1 + 対戦偏差×W2 + 休憩偏差×W3
+            <br />スコアが小さいほど公平な組み合わせです。
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setHelpTarget(null)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 }
