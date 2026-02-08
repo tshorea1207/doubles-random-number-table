@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import TuneIcon from '@mui/icons-material/Tune';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
+import GroupIcon from '@mui/icons-material/Group';
 import type { ScheduleParams, FixedPair } from '../types/schedule';
 import { useBenchmarkCalibration } from '../hooks/useBenchmarkCalibration';
 import { FixedPairsInput } from './FixedPairsInput';
@@ -35,6 +36,7 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
   const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
   const [helpTarget, setHelpTarget] = useState<'w1' | 'w2' | 'w3' | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [fixedPairsOpen, setFixedPairsOpen] = useState(false);
 
   // ハードウェア性能に基づく動的キャリブレーション係数
   const { coefficient } = useBenchmarkCalibration();
@@ -101,14 +103,24 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
         <Typography variant="h6">
           スケジュール設定
         </Typography>
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<TuneIcon />}
-          onClick={() => setAdvancedOpen(true)}
-        >
-          詳細設定
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<GroupIcon />}
+            onClick={() => setFixedPairsOpen(true)}
+          >
+            {fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : '固定ペア'}
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<TuneIcon />}
+            onClick={() => setAdvancedOpen(true)}
+          >
+            詳細設定
+          </Button>
+        </Box>
       </Box>
 
       <form onSubmit={handleSubmit}>
@@ -153,16 +165,6 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
             />
           </Grid>
 
-          {/* 固定ペア */}
-          <Grid item xs={12}>
-            <FixedPairsInput
-              playersCount={players}
-              courtsCount={courts}
-              fixedPairs={fixedPairs}
-              onChange={setFixedPairs}
-            />
-          </Grid>
-
           {/* 送信ボタン */}
           <Grid item xs={12}>
             <Button
@@ -189,6 +191,24 @@ export function ScheduleForm({ onGenerate, isGenerating }: ScheduleFormProps) {
           推奨: 2面コート。3面以上は計算時間が増加します。
         </Typography>
       </Box>
+
+      {/* 固定ペアダイアログ */}
+      <Dialog open={fixedPairsOpen} onClose={() => setFixedPairsOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>固定ペア設定</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            <FixedPairsInput
+              playersCount={players}
+              courtsCount={courts}
+              fixedPairs={fixedPairs}
+              onChange={setFixedPairs}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setFixedPairsOpen(false)}>閉じる</Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 詳細設定ダイアログ */}
       <Dialog open={advancedOpen} onClose={() => setAdvancedOpen(false)} maxWidth="sm" fullWidth>
