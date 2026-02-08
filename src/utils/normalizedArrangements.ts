@@ -3,48 +3,58 @@
  *
  * 全順列からフィルタリングする代わりに、正規化制約を満たす配置のみを直接構築する。
  * これにより、8人の場合 40,320回 → 315回 の反復に削減される（128倍高速化）。
+ *
+ * テンプレート方式: 配置を0-basedインデックスのテンプレートとして保存し、
+ * 使用時にplayerMapで実プレイヤー番号に変換する。
+ * これにより、異なるプレイヤーサブセットで同一構造のキャッシュ重複を排除する。
+ * （10人2コートの場合: 45エントリ → 1エントリ に削減）
  */
 
 /**
- * 正規化配置のキャッシュ
+ * 正規化配置テンプレートのキャッシュ
  * キー: "courtsCount-playingCount" (例: "2-8")
- * 値: 正規化された配置の配列
+ * 値: 0-basedインデックスの配置テンプレート配列
  */
 const arrangementCache = new Map<string, number[][]>();
 
 /**
- * 指定されたコート数とプレイヤー数に対する全ての正規化配置を取得する
+ * 指定されたコート数とプレイ人数に対する全ての正規化配置テンプレートを取得する
  *
  * 正規化ルール:
  * 1. 各ペア内: player1 < player2
  * 2. 同一コート内のペア間: min(pairA) < min(pairB)
  * 3. コート間: min(court[i]) < min(court[i+1])
  *
- * キャッシュを使用して同じパラメータでの再計算を防ぐ。
+ * テンプレートは0-basedインデックスで格納される。
+ * 使用時に playerMap[index] で実プレイヤー番号に変換すること。
  *
- * @param players - プレイするプレイヤー番号の配列（ソート済み）
  * @param courtsCount - コート数
- * @returns 正規化された配置の配列
+ * @param playingCount - プレイするプレイヤー数
+ * @returns 0-basedインデックスの正規化配置テンプレート配列
  *
  * @example
- * getNormalizedArrangements([1,2,3,4,5,6,7,8], 2)
- * // [[1,2,3,4,5,6,7,8], [1,2,3,5,4,6,7,8], ...] (315通り)
+ * getNormalizedArrangements(2, 8)
+ * // [[0,1,2,3,4,5,6,7], [0,1,2,4,3,5,6,7], ...] (315通り)
+ * // 実際のプレイヤー番号に変換: playerMap = [1,3,4,5,7,8,9,10]
+ * // template[i] → playerMap[template[i]]
  */
 export function getNormalizedArrangements(
-  players: number[],
-  courtsCount: number
+  courtsCount: number,
+  playingCount: number
 ): number[][] {
-  // キャッシュキーはプレイヤー構成を含める
-  const cacheKey = `${courtsCount}-${players.join(',')}`;
+  const cacheKey = `${courtsCount}-${playingCount}`;
 
   const cached = arrangementCache.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  // 直接構築アルゴリズムで正規化配置を生成
+  // 0-basedインデックスの初期配列 [0, 1, ..., playingCount-1]
+  const indices = Array.from({ length: playingCount }, (_, i) => i);
+
+  // 直接構築アルゴリズムで正規化配置テンプレートを生成
   const results: number[][] = [];
-  generateNormalizedRecursive(players.slice(), courtsCount, [], results);
+  generateNormalizedRecursive(indices, courtsCount, [], results);
 
   arrangementCache.set(cacheKey, results);
   return results;

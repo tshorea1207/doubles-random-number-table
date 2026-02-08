@@ -95,23 +95,26 @@ export function validateFixedPairs(
  * 配列内で各固定ペアが同じコートの同じペア位置（[0,1]または[2,3]）に
  * 存在するかを確認する。
  *
- * @param arrangement - プレイヤー配列（例: [1,2,3,4,5,6,7,8]）
+ * @param arrangement - プレイヤー配列またはテンプレート（0-basedインデックス）
  * @param courtsCount - コート数
  * @param fixedPairs - 固定ペアの配列
+ * @param playerMap - テンプレート使用時の変換配列（省略時はarrangementを直接使用）
  * @returns 全ての固定ペア制約を満たしていればtrue
  *
  * @example
- * // 2コート、固定ペア (1,2)
+ * // 直接使用: 2コート、固定ペア (1,2)
  * satisfiesFixedPairs([1,2,3,4, 5,6,7,8], 2, [{player1:1, player2:2}])
- * // => true（1と2がコート1のペアAとして配置）
+ * // => true
  *
- * satisfiesFixedPairs([1,3,2,4, 5,6,7,8], 2, [{player1:1, player2:2}])
- * // => false（1と3がペア、2と4がペアになっている）
+ * // テンプレート使用: template=[0,1,2,3,4,5,6,7], playerMap=[1,2,3,4,5,6,7,8]
+ * satisfiesFixedPairs([0,1,2,3,4,5,6,7], 2, [{player1:1, player2:2}], [1,2,3,4,5,6,7,8])
+ * // => true
  */
 export function satisfiesFixedPairs(
   arrangement: number[],
   courtsCount: number,
-  fixedPairs: FixedPair[]
+  fixedPairs: FixedPair[],
+  playerMap?: number[]
 ): boolean {
   // 固定ペアがない場合は常に満たす
   if (fixedPairs.length === 0) {
@@ -126,12 +129,17 @@ export function satisfiesFixedPairs(
 
   for (let courtIdx = 0; courtIdx < courtsCount; courtIdx++) {
     const offset = courtIdx * playersPerCourt;
+    // テンプレートの場合はplayerMapで実番号に変換
+    const p0 = playerMap ? playerMap[arrangement[offset]] : arrangement[offset];
+    const p1 = playerMap ? playerMap[arrangement[offset + 1]] : arrangement[offset + 1];
+    const p2 = playerMap ? playerMap[arrangement[offset + 2]] : arrangement[offset + 2];
+    const p3 = playerMap ? playerMap[arrangement[offset + 3]] : arrangement[offset + 3];
     // ペアA: positions [0,1]
-    pairMap.set(arrangement[offset], arrangement[offset + 1]);
-    pairMap.set(arrangement[offset + 1], arrangement[offset]);
+    pairMap.set(p0, p1);
+    pairMap.set(p1, p0);
     // ペアB: positions [2,3]
-    pairMap.set(arrangement[offset + 2], arrangement[offset + 3]);
-    pairMap.set(arrangement[offset + 3], arrangement[offset + 2]);
+    pairMap.set(p2, p3);
+    pairMap.set(p3, p2);
   }
 
   // 各固定ペアが実際にペアになっているかチェック

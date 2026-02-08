@@ -104,21 +104,46 @@ export function createInitialArrangement(playersCount: number): number[] {
  * 計算量: O(C(n, k)) = O(n! / (k!(n-k)!))
  */
 export function* generateCombinations(arr: number[], k: number): Generator<number[]> {
+  const n = arr.length;
   if (k === 0) {
     yield [];
     return;
   }
-  if (arr.length < k) {
+  if (n < k) {
     return;
   }
 
-  const [first, ...rest] = arr;
-  // first を含む組み合わせ
-  for (const combo of generateCombinations(rest, k - 1)) {
-    yield [first, ...combo];
+  // インデックスベースの反復方式（spread演算子による中間配列生成を回避）
+  const indices = Array.from({ length: k }, (_, i) => i);
+  const result = new Array<number>(k);
+
+  // 最初の組み合わせを生成
+  for (let i = 0; i < k; i++) {
+    result[i] = arr[indices[i]];
   }
-  // first を含まない組み合わせ
-  yield* generateCombinations(rest, k);
+  yield result.slice();
+
+  // 後続の組み合わせを辞書順で生成
+  while (true) {
+    // 右端からインクリメント可能な位置を探す
+    let i = k - 1;
+    while (i >= 0 && indices[i] === i + n - k) {
+      i--;
+    }
+    if (i < 0) return;
+
+    // インデックスをインクリメントし、後続を再初期化
+    indices[i]++;
+    for (let j = i + 1; j < k; j++) {
+      indices[j] = indices[j - 1] + 1;
+    }
+
+    // 結果配列を更新
+    for (let j = 0; j < k; j++) {
+      result[j] = arr[indices[j]];
+    }
+    yield result.slice();
+  }
 }
 
 /**

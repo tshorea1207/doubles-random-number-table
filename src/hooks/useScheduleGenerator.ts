@@ -73,6 +73,21 @@ function estimateNormalizedCount(playersCount: number, courtsCount: number): num
 }
 
 /**
+ * テンプレートを実プレイヤー番号の配置に変換する
+ *
+ * @param template - 0-basedインデックスのテンプレート
+ * @param playerMap - 実プレイヤー番号の配列
+ * @returns 実プレイヤー番号の配置配列
+ */
+function templateToArrangement(template: number[], playerMap: number[]): number[] {
+  const result = new Array(template.length);
+  for (let i = 0; i < template.length; i++) {
+    result[i] = playerMap[template[i]];
+  }
+  return result;
+}
+
+/**
  * 標準的な正規化配列を使って最初のラウンドを作成する
  *
  * 休憩者なし・固定ペアなしの場合:
@@ -86,24 +101,24 @@ function estimateNormalizedCount(playersCount: number, courtsCount: number): num
  * 固定ペアがある場合:
  *   固定ペア制約を満たす最初の正規化配列を探索
  *
- * @param playersCount - プレイヤーの総数
+ * @param allPlayers - 全プレイヤー番号の配列（事前生成、再利用）
  * @param courtsCount - コート数
  * @param fixedPairs - 固定ペアの配列
  * @returns 標準形式の最初のラウンド
  * @throws 固定ペアを満たす配置が見つからない場合
  */
 function createFirstRound(
-  playersCount: number,
+  allPlayers: number[],
   courtsCount: number,
   fixedPairs: FixedPair[]
 ): Round {
+  const playersCount = allPlayers.length;
   const playingCount = courtsCount * 4;
   const restCount = playersCount - playingCount;
-  const allPlayers = createInitialArrangement(playersCount);
 
   // 休憩者なし・固定ペアなしの場合は従来通り
   if (restCount <= 0 && fixedPairs.length === 0) {
-    return arrangementToRoundWithRest(allPlayers, courtsCount, 1, []);
+    return arrangementToRoundWithRest(allPlayers.slice(), courtsCount, 1, []);
   }
 
   // 休憩者ありまたは固定ペアがある場合: 探索が必要
@@ -113,11 +128,12 @@ function createFirstRound(
   for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, initialRestCounts)) {
     const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
-    // 事前生成された正規化配置を反復
-    const normalizedArrangements = getNormalizedArrangements(playingPlayers, courtsCount);
-    for (const arrangement of normalizedArrangements) {
-      if (satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
-        return arrangementToRoundWithRest(arrangement.slice(), courtsCount, 1, restingPlayers);
+    // テンプレート方式で正規化配置を取得
+    const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);
+    for (const template of templates) {
+      if (satisfiesFixedPairs(template, courtsCount, fixedPairs, playingPlayers)) {
+        const arrangement = templateToArrangement(template, playingPlayers);
+        return arrangementToRoundWithRest(arrangement, courtsCount, 1, restingPlayers);
       }
     }
   }
@@ -131,14 +147,14 @@ function createFirstRound(
  * アルゴリズム:
  * 1. 累積状態の休憩回数を使用してハイブリッドアプローチで休憩者候補を生成
  * 2. 各休憩者パターンについて:
- *    a. 事前生成された正規化配置を反復
+ *    a. テンプレート方式で正規化配置を反復
  *    b. 固定ペア制約を満たす配列のみをフィルタ
  *    c. 増分評価でスコアを計算（累積状態から差分のみ）
  * 3. 最良の配列からラウンドオブジェクトを1回だけ作成して返す
  *
  * @param cumulativeState - 現在までの累積評価状態
  * @param roundNumber - 生成するラウンド番号
- * @param playersCount - プレイヤーの総数
+ * @param allPlayers - 全プレイヤー番号の配列（事前生成、再利用）
  * @param courtsCount - コート数
  * @param weights - 評価の重み
  * @param fixedPairs - 固定ペアの配列
@@ -149,16 +165,16 @@ function createFirstRound(
 function findBestNextRound(
   cumulativeState: CumulativeState,
   roundNumber: number,
-  playersCount: number,
+  allPlayers: number[],
   courtsCount: number,
   weights: { w1: number; w2: number; w3: number },
   fixedPairs: FixedPair[]
 ): Round {
   const playingCount = courtsCount * 4;
-  const restCount = playersCount - playingCount;
-  const allPlayers = createInitialArrangement(playersCount);
+  const restCount = allPlayers.length - playingCount;
 
-  let bestArrangement: number[] | null = null;
+  let bestTemplate: number[] | null = null;
+  let bestPlayerMap: number[] | null = null;
   let bestRestingPlayers: number[] | null = null;
   let bestScore = Infinity;
 
@@ -166,35 +182,38 @@ function findBestNextRound(
   for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts)) {
     const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
-    // 事前生成された正規化配置を反復
-    const normalizedArrangements = getNormalizedArrangements(playingPlayers, courtsCount);
-    for (const arrangement of normalizedArrangements) {
+    // テンプレート方式で正規化配置を取得（キャッシュは courtsCount-playingCount で共有）
+    const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);
+    for (const template of templates) {
       // 固定ペア制約を満たす配列のみを評価
-      if (satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
-        // 増分評価: Round オブジェクトを作らず直接スコア計算
+      if (satisfiesFixedPairs(template, courtsCount, fixedPairs, playingPlayers)) {
+        // 増分評価: テンプレート + playerMap から直接スコア計算
         const score = evaluateCandidate(
           cumulativeState,
-          arrangement,
+          template,
           courtsCount,
+          playingPlayers,
           restingPlayers,
           weights
         );
 
-        // 最良を追跡（最良時のみ配列をコピー）
+        // 最良を追跡（最良時のみコピー）
         if (score < bestScore) {
           bestScore = score;
-          bestArrangement = arrangement.slice();
+          bestTemplate = template.slice();
+          bestPlayerMap = playingPlayers;
           bestRestingPlayers = [...restingPlayers];
         }
       }
     }
   }
 
-  if (!bestArrangement) {
+  if (!bestTemplate || !bestPlayerMap) {
     throw new Error('固定ペアを満たす配置が見つかりません');
   }
 
-  // 最良候補から1回だけ Round オブジェクトを作成
+  // 最良候補のテンプレートを実プレイヤー番号に変換し、1回だけ Round オブジェクトを作成
+  const bestArrangement = templateToArrangement(bestTemplate, bestPlayerMap);
   return arrangementToRoundWithRest(bestArrangement, courtsCount, roundNumber, bestRestingPlayers!);
 }
 
@@ -205,7 +224,7 @@ function findBestNextRound(
  *
  * @param cumulativeState - 現在までの累積評価状態
  * @param roundNumber - 生成するラウンド番号
- * @param playersCount - プレイヤーの総数
+ * @param allPlayers - 全プレイヤー番号の配列（事前生成、再利用）
  * @param courtsCount - コート数
  * @param weights - 評価の重み
  * @param fixedPairs - 固定ペアの配列
@@ -215,17 +234,17 @@ function findBestNextRound(
 async function findBestNextRoundAsync(
   cumulativeState: CumulativeState,
   roundNumber: number,
-  playersCount: number,
+  allPlayers: number[],
   courtsCount: number,
   weights: { w1: number; w2: number; w3: number },
   fixedPairs: FixedPair[],
   onProgress: (evaluationCount: number) => void
 ): Promise<Round> {
   const playingCount = courtsCount * 4;
-  const restCount = playersCount - playingCount;
-  const allPlayers = createInitialArrangement(playersCount);
+  const restCount = allPlayers.length - playingCount;
 
-  let bestArrangement: number[] | null = null;
+  let bestTemplate: number[] | null = null;
+  let bestPlayerMap: number[] | null = null;
   let bestRestingPlayers: number[] | null = null;
   let bestScore = Infinity;
   let evaluationCount = 0;
@@ -236,26 +255,28 @@ async function findBestNextRoundAsync(
   for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts)) {
     const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
-    // 事前生成された正規化配置を反復
-    const normalizedArrangements = getNormalizedArrangements(playingPlayers, courtsCount);
-    for (const arrangement of normalizedArrangements) {
+    // テンプレート方式で正規化配置を取得（キャッシュは courtsCount-playingCount で共有）
+    const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);
+    for (const template of templates) {
       // 固定ペア制約を満たす配列のみを評価
-      if (satisfiesFixedPairs(arrangement, courtsCount, fixedPairs)) {
+      if (satisfiesFixedPairs(template, courtsCount, fixedPairs, playingPlayers)) {
         evaluationCount++;
 
-        // 増分評価: Round オブジェクトを作らず直接スコア計算
+        // 増分評価: テンプレート + playerMap から直接スコア計算
         const score = evaluateCandidate(
           cumulativeState,
-          arrangement,
+          template,
           courtsCount,
+          playingPlayers,
           restingPlayers,
           weights
         );
 
-        // 最良を追跡（最良時のみ配列をコピー）
+        // 最良を追跡（最良時のみコピー）
         if (score < bestScore) {
           bestScore = score;
-          bestArrangement = arrangement.slice();
+          bestTemplate = template.slice();
+          bestPlayerMap = playingPlayers;
           bestRestingPlayers = [...restingPlayers];
         }
 
@@ -273,11 +294,12 @@ async function findBestNextRoundAsync(
     onProgress(evaluationCount);
   }
 
-  if (!bestArrangement) {
+  if (!bestTemplate || !bestPlayerMap) {
     throw new Error('固定ペアを満たす配置が見つかりません');
   }
 
-  // 最良候補から1回だけ Round オブジェクトを作成
+  // 最良候補のテンプレートを実プレイヤー番号に変換し、1回だけ Round オブジェクトを作成
+  const bestArrangement = templateToArrangement(bestTemplate, bestPlayerMap);
   return arrangementToRoundWithRest(bestArrangement, courtsCount, roundNumber, bestRestingPlayers!);
 }
 
@@ -316,17 +338,20 @@ export function generateSchedule(params: ScheduleParams): Schedule {
 
   const rounds: Round[] = [];
 
+  // allPlayers を1回だけ生成して再利用
+  const allPlayers = createInitialArrangement(playersCount);
+
   // 累積状態を初期化
   const cumulativeState = createCumulativeState(playersCount);
 
   // ステップ1: 最初のラウンドを作成（正規化された基本ケース、固定ペア考慮）
-  const firstRound = createFirstRound(playersCount, courtsCount, fixedPairs);
+  const firstRound = createFirstRound(allPlayers, courtsCount, fixedPairs);
   rounds.push(firstRound);
   commitRoundToState(cumulativeState, firstRound);
 
   // ステップ2: 貪欲アプローチで後続ラウンドを生成（増分評価）
   for (let r = 2; r <= roundsCount; r++) {
-    const bestRound = findBestNextRound(cumulativeState, r, playersCount, courtsCount, weights, fixedPairs);
+    const bestRound = findBestNextRound(cumulativeState, r, allPlayers, courtsCount, weights, fixedPairs);
     rounds.push(bestRound);
     commitRoundToState(cumulativeState, bestRound);
   }
@@ -358,6 +383,9 @@ export async function generateScheduleAsync(
 
   const rounds: Round[] = [];
 
+  // allPlayers を1回だけ生成して再利用
+  const allPlayers = createInitialArrangement(playersCount);
+
   // 累積状態を初期化
   const cumulativeState = createCumulativeState(playersCount);
 
@@ -367,7 +395,7 @@ export async function generateScheduleAsync(
   let currentEvaluations = 0;
 
   // ステップ1: 最初のラウンドを作成（正規化された基本ケース、固定ペア考慮）
-  const firstRound = createFirstRound(playersCount, courtsCount, fixedPairs);
+  const firstRound = createFirstRound(allPlayers, courtsCount, fixedPairs);
   rounds.push(firstRound);
   commitRoundToState(cumulativeState, firstRound);
 
@@ -386,7 +414,7 @@ export async function generateScheduleAsync(
     const bestRound = await findBestNextRoundAsync(
       cumulativeState,
       r,
-      playersCount,
+      allPlayers,
       courtsCount,
       weights,
       fixedPairs,

@@ -218,19 +218,47 @@ export function commitRoundToState(state: CumulativeState, round: Round): void {
     state.pairSum += 1;
     state.pairSumSq += 2 * oldPairB + 1;
 
-    // 対戦回数: pairA vs pairB の4組み合わせ
-    const playersA = [pairA.player1, pairA.player2];
-    const playersB = [pairB.player1, pairB.player2];
-    for (const a of playersA) {
-      for (const b of playersB) {
-        const oi = Math.min(a, b) - 1;
-        const oj = Math.max(a, b) - 1;
-        const oldOppo = state.oppoCounts[oi][oj];
-        state.oppoCounts[oi][oj]++;
-        state.oppoCounts[oj][oi]++;
-        state.oppoSum += 1;
-        state.oppoSumSq += 2 * oldOppo + 1;
-      }
+    // 対戦回数: pairA vs pairB の4組み合わせ（配列生成なしで直接展開）
+    const a1 = pairA.player1;
+    const a2 = pairA.player2;
+    const b1 = pairB.player1;
+    const b2 = pairB.player2;
+
+    {
+      const oi = Math.min(a1, b1) - 1;
+      const oj = Math.max(a1, b1) - 1;
+      const oldOppo = state.oppoCounts[oi][oj];
+      state.oppoCounts[oi][oj]++;
+      state.oppoCounts[oj][oi]++;
+      state.oppoSum += 1;
+      state.oppoSumSq += 2 * oldOppo + 1;
+    }
+    {
+      const oi = Math.min(a1, b2) - 1;
+      const oj = Math.max(a1, b2) - 1;
+      const oldOppo = state.oppoCounts[oi][oj];
+      state.oppoCounts[oi][oj]++;
+      state.oppoCounts[oj][oi]++;
+      state.oppoSum += 1;
+      state.oppoSumSq += 2 * oldOppo + 1;
+    }
+    {
+      const oi = Math.min(a2, b1) - 1;
+      const oj = Math.max(a2, b1) - 1;
+      const oldOppo = state.oppoCounts[oi][oj];
+      state.oppoCounts[oi][oj]++;
+      state.oppoCounts[oj][oi]++;
+      state.oppoSum += 1;
+      state.oppoSumSq += 2 * oldOppo + 1;
+    }
+    {
+      const oi = Math.min(a2, b2) - 1;
+      const oj = Math.max(a2, b2) - 1;
+      const oldOppo = state.oppoCounts[oi][oj];
+      state.oppoCounts[oi][oj]++;
+      state.oppoCounts[oj][oi]++;
+      state.oppoSum += 1;
+      state.oppoSumSq += 2 * oldOppo + 1;
     }
   }
 
@@ -252,9 +280,10 @@ export function commitRoundToState(state: CumulativeState, round: Round): void {
  * stddev = sqrt(sumSq/n - (sum/n)²)
  *
  * @param state - 現在の累積状態（変更しない）
- * @param arrangement - 正規化済みプレイヤー配置（ペア内: p1 < p2）
+ * @param template - 0-basedインデックスの正規化済み配置テンプレート
  * @param courtsCount - コート数
- * @param restingPlayers - 休憩者リスト
+ * @param playerMap - テンプレートインデックスを実プレイヤー番号に変換する配列
+ * @param restingPlayers - 休憩者リスト（実プレイヤー番号）
  * @param weights - 評価の重み
  * @returns totalScore（小さいほど良い）
  *
@@ -262,8 +291,9 @@ export function commitRoundToState(state: CumulativeState, round: Round): void {
  */
 export function evaluateCandidate(
   state: CumulativeState,
-  arrangement: number[],
+  template: number[],
   courtsCount: number,
+  playerMap: number[],
   restingPlayers: number[],
   weights: { w1: number; w2: number; w3: number }
 ): number {
@@ -276,10 +306,10 @@ export function evaluateCandidate(
 
   for (let c = 0; c < courtsCount; c++) {
     const offset = c * 4;
-    const p1 = arrangement[offset];
-    const p2 = arrangement[offset + 1];
-    const p3 = arrangement[offset + 2];
-    const p4 = arrangement[offset + 3];
+    const p1 = playerMap[template[offset]];
+    const p2 = playerMap[template[offset + 1]];
+    const p3 = playerMap[template[offset + 2]];
+    const p4 = playerMap[template[offset + 3]];
 
     // ペア: (p1, p2) - 正規化済み (p1 < p2)
     const oldPair1 = state.pairCounts[p1 - 1][p2 - 1];
@@ -291,17 +321,30 @@ export function evaluateCandidate(
     pairSum += 1;
     pairSumSq += 2 * oldPair2 + 1;
 
-    // 対戦: (p1,p2) vs (p3,p4) の4組み合わせ
-    const pairAPlayers = [p1, p2];
-    const pairBPlayers = [p3, p4];
-    for (const a of pairAPlayers) {
-      for (const b of pairBPlayers) {
-        const oi = Math.min(a, b) - 1;
-        const oj = Math.max(a, b) - 1;
-        const oldOppo = state.oppoCounts[oi][oj];
-        oppoSum += 1;
-        oppoSumSq += 2 * oldOppo + 1;
-      }
+    // 対戦: (p1,p2) vs (p3,p4) の4組み合わせ（配列生成なしで直接展開）
+    {
+      const oi = p1 < p3 ? p1 - 1 : p3 - 1;
+      const oj = p1 < p3 ? p3 - 1 : p1 - 1;
+      oppoSum += 1;
+      oppoSumSq += 2 * state.oppoCounts[oi][oj] + 1;
+    }
+    {
+      const oi = p1 < p4 ? p1 - 1 : p4 - 1;
+      const oj = p1 < p4 ? p4 - 1 : p1 - 1;
+      oppoSum += 1;
+      oppoSumSq += 2 * state.oppoCounts[oi][oj] + 1;
+    }
+    {
+      const oi = p2 < p3 ? p2 - 1 : p3 - 1;
+      const oj = p2 < p3 ? p3 - 1 : p2 - 1;
+      oppoSum += 1;
+      oppoSumSq += 2 * state.oppoCounts[oi][oj] + 1;
+    }
+    {
+      const oi = p2 < p4 ? p2 - 1 : p4 - 1;
+      const oj = p2 < p4 ? p4 - 1 : p2 - 1;
+      oppoSum += 1;
+      oppoSumSq += 2 * state.oppoCounts[oi][oj] + 1;
     }
   }
 
