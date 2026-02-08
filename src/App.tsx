@@ -7,7 +7,8 @@ import { EvaluationDisplay } from './components/EvaluationDisplay';
 import { PlayerStatsTable } from './components/PlayerStatsTable';
 
 function App() {
-  const { schedule, isGenerating, progress, error, generate } = useScheduleGenerator();
+  const { schedule, isGenerating, progress, error, generate, partialSchedule } = useScheduleGenerator();
+  const displaySchedule = schedule ?? partialSchedule;
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
 
   // トグルハンドラー
@@ -49,7 +50,7 @@ function App() {
         <Box sx={{ my: 4 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             {progress
-              ? `評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
+              ? `ラウンド ${progress.currentRound} / ${progress.totalRounds} 生成中 - 評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
               : '生成を準備中...'}
           </Typography>
           <LinearProgress
@@ -67,15 +68,19 @@ function App() {
       )}
 
       {/* 結果 */}
-      {schedule && !isGenerating && (
+      {displaySchedule && (
         <>
-          <EvaluationDisplay evaluation={schedule.evaluation} />
+          {!isGenerating && schedule && (
+            <EvaluationDisplay evaluation={schedule.evaluation} />
+          )}
           <ScheduleTable
-            schedule={schedule}
+            schedule={displaySchedule}
             completedMatches={completedMatches}
             onToggleComplete={handleToggleComplete}
           />
-          <PlayerStatsTable schedule={schedule} />
+          {!isGenerating && schedule && (
+            <PlayerStatsTable schedule={schedule} />
+          )}
         </>
       )}
     </Container>

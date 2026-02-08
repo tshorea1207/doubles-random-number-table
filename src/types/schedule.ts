@@ -124,4 +124,6 @@ export interface GenerationProgress {
   currentEvaluations: number;  // これまでに完了した評価回数
   totalEvaluations: number;    // 実行予定の総評価回数
   percentage: number;          // 進捗率（0-100）
+  currentRound: number;        // 現在生成中のラウンド番号（1始まり）
+  totalRounds: number;         // 総ラウンド数
 }

@@ -361,7 +361,8 @@ export function generateSchedule(params: ScheduleParams): Schedule {
  */
 export async function generateScheduleAsync(
   params: ScheduleParams,
-  onProgress: (progress: GenerationProgress) => void
+  onProgress: (progress: GenerationProgress) => void,
+  onRoundComplete?: (rounds: Round[], roundNumber: number) => void
 ): Promise<Schedule> {
   const { courtsCount, playersCount, roundsCount, weights, fixedPairs } = params;
 
@@ -382,12 +383,15 @@ export async function generateScheduleAsync(
   const firstRound = createFirstRound(allPlayers, courtsCount, fixedPairs);
   rounds.push(firstRound);
   commitRoundToState(cumulativeState, firstRound);
+  onRoundComplete?.([...rounds], 1);
 
   // 初期進捗を報告
   onProgress({
     currentEvaluations: 0,
     totalEvaluations,
-    percentage: 0
+    percentage: 0,
+    currentRound: 1,
+    totalRounds: roundsCount
   });
 
   // ステップ2: 貪欲アプローチで後続ラウンドを生成（増分評価）
@@ -411,13 +415,16 @@ export async function generateScheduleAsync(
         onProgress({
           currentEvaluations,
           totalEvaluations,
-          percentage
+          percentage,
+          currentRound: r,
+          totalRounds: roundsCount
         });
       }
     );
 
     rounds.push(bestRound);
     commitRoundToState(cumulativeState, bestRound);
+    onRoundComplete?.([...rounds], r);
   }
 
   // ステップ3: 累積状態から最終評価を計算
@@ -427,7 +434,9 @@ export async function generateScheduleAsync(
   onProgress({
     currentEvaluations: totalEvaluations,
     totalEvaluations,
-    percentage: 100
+    percentage: 100,
+    currentRound: roundsCount,
+    totalRounds: roundsCount
   });
 
   return {
@@ -462,26 +471,43 @@ export function useScheduleGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [partialSchedule, setPartialSchedule] = useState<Schedule | null>(null);
 
   const generate = useCallback((params: ScheduleParams) => {
     setIsGenerating(true);
     setError(null);
     setProgress(null);
+    setSchedule(null);
+    setPartialSchedule(null);
 
     // 進捗更新付きで非同期生成を実行
-    generateScheduleAsync(params, (progressUpdate) => {
-      setProgress(progressUpdate);
-    })
+    generateScheduleAsync(
+      params,
+      (progressUpdate) => {
+        setProgress(progressUpdate);
+      },
+      (confirmedRounds) => {
+        setPartialSchedule({
+          courts: params.courtsCount,
+          players: params.playersCount,
+          rounds: confirmedRounds,
+          evaluation: { pairStdDev: 0, oppoStdDev: 0, restStdDev: 0, totalScore: 0 },
+          fixedPairs: params.fixedPairs,
+        });
+      }
+    )
       .then((result) => {
         setSchedule(result);
+        setPartialSchedule(null);
         setIsGenerating(false);
       })
       .catch((err) => {
         setError(err instanceof Error ? err.message : '生成に失敗しました');
         setIsGenerating(false);
         setProgress(null);
+        setPartialSchedule(null);
       });
   }, []);
 
-  return { schedule, isGenerating, progress, error, generate };
+  return { schedule, isGenerating, progress, error, generate, partialSchedule };
 }
