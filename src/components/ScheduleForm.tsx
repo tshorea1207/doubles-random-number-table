@@ -1,7 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import {
   Box,
-  TextField,
   Slider,
   Button,
   Typography,
@@ -139,41 +138,73 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
         <Grid container spacing={3}>
           {/* コート数 */}
           <Grid item xs={12} sm={4}>
-            <TextField
-              label="コート数"
-              type="number"
+            <Typography gutterBottom>
+              コート数: {courts}
+            </Typography>
+            <Slider
               value={courts}
-              onChange={(e) => setCourts(Number(e.target.value))}
-              inputProps={{ min: 1, max: 4 }}
-              fullWidth
-              helperText="1-4 コート"
+              onChange={(_, value) => setCourts(value as number)}
+              min={1}
+              max={4}
+              step={1}
+              marks={[
+                { value: 1, label: '1' },
+                { value: 2, label: '2' },
+                { value: 3, label: '3' },
+                { value: 4, label: '4' },
+              ]}
+              valueLabelDisplay="auto"
             />
           </Grid>
 
           {/* 参加人数 */}
           <Grid item xs={12} sm={4}>
-            <TextField
-              label="参加人数"
-              type="number"
+            <Typography gutterBottom>
+              参加人数: {players}
+            </Typography>
+            <Slider
               value={players}
-              onChange={(e) => setPlayers(Number(e.target.value))}
-              inputProps={{ min: 4, max: 16 }}
-              fullWidth
-              error={!isValid}
-              helperText={errorMessage || restingMessage || '4-16 人'}
+              onChange={(_, value) => setPlayers(value as number)}
+              min={4}
+              max={16}
+              step={1}
+              marks={[
+                { value: 4, label: '4' },
+                { value: 8, label: '8' },
+                { value: 12, label: '12' },
+                { value: 16, label: '16' },
+              ]}
+              valueLabelDisplay="auto"
             />
+            {errorMessage && (
+              <Typography variant="caption" color="error">
+                {errorMessage}
+              </Typography>
+            )}
+            {!errorMessage && restingMessage && (
+              <Typography variant="caption" color="text.secondary">
+                {restingMessage}
+              </Typography>
+            )}
           </Grid>
 
           {/* ラウンド数 */}
           <Grid item xs={12} sm={4}>
-            <TextField
-              label="ラウンド数"
-              type="number"
+            <Typography gutterBottom>
+              ラウンド数: {rounds}
+            </Typography>
+            <Slider
               value={rounds}
-              onChange={(e) => setRounds(Number(e.target.value))}
-              inputProps={{ min: 1, max: 10 }}
-              fullWidth
-              helperText="1-10 ラウンド"
+              onChange={(_, value) => setRounds(value as number)}
+              min={1}
+              max={10}
+              step={1}
+              marks={[
+                { value: 1, label: '1' },
+                { value: 5, label: '5' },
+                { value: 10, label: '10' },
+              ]}
+              valueLabelDisplay="auto"
             />
           </Grid>
 
