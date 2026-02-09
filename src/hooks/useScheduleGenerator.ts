@@ -109,7 +109,7 @@ function createFirstRound(
   // 初回の休憩者候補（番号が大きい順）
   const initialRestCounts = initializeRestCounts(playersCount);
 
-  for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, initialRestCounts)) {
+  for (const restingPlayers of generateRestingCandidates([...allPlayers].reverse(), restCount, initialRestCounts)) {
     const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
     // テンプレート方式で正規化配置を取得
