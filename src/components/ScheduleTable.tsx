@@ -221,43 +221,51 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: 
         })}
       </Box>
       {/* ラウンド詳細ダイアログ */}
-      <Dialog open={selectedRound !== null} onClose={() => setSelectedRound(null)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={selectedRound !== null}
+        onClose={() => setSelectedRound(null)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { sx: { mx: { xs: 1, sm: 4 } } } }}
+      >
         {selectedRound && (
           <>
             <DialogTitle>ラウンド {selectedRound.roundNumber}</DialogTitle>
-            <DialogContent>
+            <DialogContent sx={{ px: { xs: 1.5, sm: 3 } }}>
               {selectedRound.matches.map((match, idx) => (
                 <Box key={idx} sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                     コート {idx + 1}
                   </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1.5 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
                     <Box
                       sx={{
                         bgcolor: scheduleColors.teamA,
                         borderRadius: 2,
-                        px: 2,
+                        px: { xs: 1, sm: 1.5 },
                         py: 1,
-                        fontSize: "2rem",
+                        fontSize: "clamp(2.5rem, 8vw, 4rem)",
                         fontWeight: 700,
                         textAlign: "center",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {match.pairA.player1}, {match.pairA.player2}
+                      {match.pairA.player1},{match.pairA.player2}
                     </Box>
                     <Typography sx={{ fontSize: "1rem", color: "text.secondary", fontWeight: 600 }}>vs</Typography>
                     <Box
                       sx={{
                         bgcolor: scheduleColors.teamB,
                         borderRadius: 2,
-                        px: 2,
+                        px: { xs: 1, sm: 1.5 },
                         py: 1,
-                        fontSize: "2rem",
+                        fontSize: "clamp(2.5rem, 8vw, 4rem)",
                         fontWeight: 700,
                         textAlign: "center",
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      {match.pairB.player1}, {match.pairB.player2}
+                      {match.pairB.player1},{match.pairB.player2}
                     </Box>
                   </Box>
                 </Box>
