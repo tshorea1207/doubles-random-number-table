@@ -9,7 +9,7 @@ import { PlayerChangePanel } from './components/PlayerChangePanel';
 import type { ScheduleParams, RegenerationParams } from './types/schedule';
 
 function App() {
-  const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule } = useScheduleGenerator();
+  const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel } = useScheduleGenerator();
   const displaySchedule = schedule ?? partialSchedule;
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
   const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
@@ -63,6 +63,7 @@ function App() {
       {/* 入力フォーム */}
       <ScheduleForm
         onGenerate={handleGenerate}
+        onCancel={cancel}
         isGenerating={isGenerating}
         hasSchedule={!isGenerating && !!schedule && !!lastParams}
         onPlayerChangeClick={() => setPlayerChangeOpen(true)}

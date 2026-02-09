@@ -23,12 +23,13 @@ import { validateFixedPairs } from '../utils/fixedPairs';
 
 interface ScheduleFormProps {
   onGenerate: (params: ScheduleParams) => void;
+  onCancel: () => void;
   isGenerating: boolean;
   hasSchedule?: boolean;
   onPlayerChangeClick?: () => void;
 }
 
-export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerChangeClick }: ScheduleFormProps) {
+export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, onPlayerChangeClick }: ScheduleFormProps) {
   const [courts, setCourts] = useState(2);
   const [players, setPlayers] = useState(8);
   const [rounds, setRounds] = useState(7);
@@ -111,7 +112,7 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
             size="small"
             startIcon={<PersonAddIcon />}
             onClick={onPlayerChangeClick}
-            disabled={!hasSchedule}
+            disabled={!hasSchedule || isGenerating}
           >
             参加者の変更
           </Button>
@@ -120,6 +121,7 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
             size="small"
             startIcon={<GroupIcon />}
             onClick={() => setFixedPairsOpen(true)}
+            disabled={isGenerating}
           >
             {fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : '固定ペア'}
           </Button>
@@ -128,6 +130,7 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
             size="small"
             startIcon={<TuneIcon />}
             onClick={() => setAdvancedOpen(true)}
+            disabled={isGenerating}
           >
             詳細設定
           </Button>
@@ -154,6 +157,7 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
                 { value: 4, label: '4' },
               ]}
               valueLabelDisplay="auto"
+              disabled={isGenerating}
             />
           </Grid>
 
@@ -175,6 +179,7 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
                 { value: 16, label: '16' },
               ]}
               valueLabelDisplay="auto"
+              disabled={isGenerating}
             />
             {errorMessage && (
               <Typography variant="caption" color="error">
@@ -205,25 +210,37 @@ export function ScheduleForm({ onGenerate, isGenerating, hasSchedule, onPlayerCh
                 { value: 10, label: '10' },
               ]}
               valueLabelDisplay="auto"
+              disabled={isGenerating}
             />
           </Grid>
 
           {/* 送信ボタン */}
           <Grid item xs={12}>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              size="large"
-              fullWidth
-              disabled={!isValid || isGenerating}
-            >
-              {isGenerating
-                ? '生成中...'
-                : estimatedTime
-                ? `スケジュール生成 (${estimatedTime})`
-                : 'スケジュール生成'}
-            </Button>
+            {isGenerating ? (
+              <Button
+                type="button"
+                variant="contained"
+                color="error"
+                size="large"
+                fullWidth
+                onClick={onCancel}
+              >
+                生成停止
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                size="large"
+                fullWidth
+                disabled={!isValid}
+              >
+                {estimatedTime
+                  ? `スケジュール生成 (${estimatedTime})`
+                  : 'スケジュール生成'}
+              </Button>
+            )}
           </Grid>
         </Grid>
       </form>

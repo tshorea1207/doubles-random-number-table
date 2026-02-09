@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import type { Schedule, ScheduleParams, Round, GenerationProgress, FixedPair, CumulativeState, RegenerationParams } from '../types/schedule';
 import { createInitialArrangement, generateRestingCandidates } from '../utils/permutation';
 import { arrangementToRoundWithRest } from '../utils/normalization';
@@ -222,7 +222,8 @@ async function findBestNextRoundAsync(
   courtsCount: number,
   weights: { w1: number; w2: number; w3: number },
   fixedPairs: FixedPair[],
-  onProgress: (evaluationCount: number) => void
+  onProgress: (evaluationCount: number) => void,
+  signal?: AbortSignal
 ): Promise<Round> {
   const playingCount = courtsCount * 4;
   const restCount = allPlayers.length - playingCount;
@@ -268,6 +269,9 @@ async function findBestNextRoundAsync(
         if (evaluationCount % BATCH_SIZE === 0) {
           onProgress(evaluationCount);
           await new Promise(resolve => setTimeout(resolve, 0));
+          if (signal?.aborted) {
+            throw new DOMException('Generation cancelled', 'AbortError');
+          }
         }
       }
     }
@@ -363,7 +367,8 @@ export function generateSchedule(params: ScheduleParams): Schedule {
 export async function generateScheduleAsync(
   params: ScheduleParams,
   onProgress: (progress: GenerationProgress) => void,
-  onRoundComplete?: (rounds: Round[], roundNumber: number) => void
+  onRoundComplete?: (rounds: Round[], roundNumber: number) => void,
+  signal?: AbortSignal
 ): Promise<Schedule> {
   const { courtsCount, playersCount, roundsCount, weights, fixedPairs } = params;
 
@@ -399,6 +404,9 @@ export async function generateScheduleAsync(
   for (let r = 2; r <= roundsCount; r++) {
     // ラウンド間でUIスレッドに譲る
     await new Promise(resolve => setTimeout(resolve, 0));
+    if (signal?.aborted) {
+      throw new DOMException('Generation cancelled', 'AbortError');
+    }
 
     const bestRound = await findBestNextRoundAsync(
       cumulativeState,
@@ -420,7 +428,8 @@ export async function generateScheduleAsync(
           currentRound: r,
           totalRounds: roundsCount
         });
-      }
+      },
+      signal
     );
 
     rounds.push(bestRound);
@@ -464,7 +473,8 @@ export async function generateScheduleAsync(
 export async function generateRemainingScheduleAsync(
   params: RegenerationParams,
   onProgress: (progress: GenerationProgress) => void,
-  onRoundComplete?: (rounds: Round[], roundNumber: number) => void
+  onRoundComplete?: (rounds: Round[], roundNumber: number) => void,
+  signal?: AbortSignal
 ): Promise<Schedule> {
   const { courtsCount, completedRounds, activePlayers, remainingRoundsCount, weights, fixedPairs } = params;
 
@@ -502,6 +512,9 @@ export async function generateRemainingScheduleAsync(
 
     // ラウンド間でUIスレッドに譲る
     await new Promise(resolve => setTimeout(resolve, 0));
+    if (signal?.aborted) {
+      throw new DOMException('Generation cancelled', 'AbortError');
+    }
 
     const bestRound = await findBestNextRoundAsync(
       cumulativeState,
@@ -522,7 +535,8 @@ export async function generateRemainingScheduleAsync(
           currentRound: roundNumber,
           totalRounds,
         });
-      }
+      },
+      signal
     );
 
     allRounds.push(bestRound);
@@ -576,8 +590,14 @@ export function useScheduleGenerator() {
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [partialSchedule, setPartialSchedule] = useState<Schedule | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const generate = useCallback((params: ScheduleParams) => {
+    // 前回の生成を中断
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     setError(null);
     setProgress(null);
@@ -600,7 +620,8 @@ export function useScheduleGenerator() {
           fixedPairs: params.fixedPairs,
           activePlayers: allPlayers,
         });
-      }
+      },
+      controller.signal
     )
       .then((result) => {
         setSchedule(result);
@@ -608,6 +629,12 @@ export function useScheduleGenerator() {
         setIsGenerating(false);
       })
       .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          // キャンセル時: 途中結果があればそれを表示
+          setIsGenerating(false);
+          setProgress(null);
+          return;
+        }
         setError(err instanceof Error ? err.message : '生成に失敗しました');
         setIsGenerating(false);
         setProgress(null);
@@ -617,6 +644,11 @@ export function useScheduleGenerator() {
 
   // 参加者変更後の残りラウンド再生成
   const regenerate = useCallback((params: RegenerationParams) => {
+    // 前回の生成を中断
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     setError(null);
     setProgress(null);
@@ -635,7 +667,8 @@ export function useScheduleGenerator() {
           fixedPairs: params.fixedPairs,
           activePlayers: params.activePlayers,
         });
-      }
+      },
+      controller.signal
     )
       .then((result) => {
         setSchedule(result);
@@ -643,6 +676,12 @@ export function useScheduleGenerator() {
         setIsGenerating(false);
       })
       .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          // キャンセル時: 途中結果があればそれを表示
+          setIsGenerating(false);
+          setProgress(null);
+          return;
+        }
         setError(err instanceof Error ? err.message : '再生成に失敗しました');
         setIsGenerating(false);
         setProgress(null);
@@ -650,5 +689,9 @@ export function useScheduleGenerator() {
       });
   }, []);
 
-  return { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule };
+  const cancel = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
+  return { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel };
 }
