@@ -93,14 +93,14 @@ function App() {
       {/* 結果 */}
       {displaySchedule && (
         <>
-          {!isGenerating && schedule && (
-            <EvaluationDisplay evaluation={schedule.evaluation} />
-          )}
           <ScheduleTable
             schedule={displaySchedule}
             completedMatches={completedMatches}
             onToggleComplete={handleToggleComplete}
           />
+          {!isGenerating && schedule && (
+            <EvaluationDisplay evaluation={schedule.evaluation} />
+          )}
           {/* 参加者変更ダイアログ */}
           {!isGenerating && schedule && lastParams && (
             <PlayerChangePanel
