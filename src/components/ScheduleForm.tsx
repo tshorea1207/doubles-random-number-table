@@ -258,13 +258,6 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
         </Grid>
       </form>
 
-      {/* 情報メッセージ */}
-      <Box sx={{ mt: { xs: 1, sm: 2 } }}>
-        <Typography variant="caption" color="text.secondary">
-          推奨: 2面コート。3面以上は計算時間が増加します。
-        </Typography>
-      </Box>
-
       {/* 固定ペアダイアログ */}
       <Dialog open={fixedPairsOpen} onClose={() => setFixedPairsOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>固定ペア設定</DialogTitle>
