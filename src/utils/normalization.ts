@@ -1,6 +1,17 @@
 import type { Round, Match } from '../types/schedule';
 
 /**
+ * 配列をその場でシャッフルする（Fisher-Yates）
+ * コート割り当てのランダム化に使用
+ */
+function shuffleMatches<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
+
+/**
  * 配列が正規化ルールを満たしているか確認する
  *
  * 正規化ルールにより、等価な配列を排除して探索空間を削減する:
@@ -106,6 +117,10 @@ export function arrangementToRound(
     });
   }
 
+  if (roundNumber > 1) {
+    shuffleMatches(matches);
+  }
+
   return { roundNumber, matches, restingPlayers: [] };
 }
 
@@ -148,6 +163,10 @@ export function arrangementToRoundWithRest(
       pairA: { player1: p1, player2: p2 },
       pairB: { player1: p3, player2: p4 },
     });
+  }
+
+  if (roundNumber > 1) {
+    shuffleMatches(matches);
   }
 
   return { roundNumber, matches, restingPlayers: restingPlayers.slice().sort((a, b) => a - b) };

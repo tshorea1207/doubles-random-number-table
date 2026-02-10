@@ -44,7 +44,7 @@ export interface Match {
  */
 export interface Round {
   roundNumber: number; // ラウンド番号（1始まり）
-  matches: Match[]; // コートごとに1試合、最小プレイヤー番号でソート済み
+  matches: Match[]; // コートごとに1試合（コート割り当てはランダム）
   restingPlayers: number[]; // このラウンドで休憩するプレイヤー番号（昇順）
 }
 

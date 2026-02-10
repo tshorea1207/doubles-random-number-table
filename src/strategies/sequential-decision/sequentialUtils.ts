@@ -282,12 +282,8 @@ export function buildNormalizedMatches(
     }
   });
 
-  // コート間ソート: min(court[i]) < min(court[i+1])
-  matches.sort((a, b) => {
-    const minA = Math.min(a.pairA.player1, a.pairA.player2, a.pairB.player1, a.pairB.player2);
-    const minB = Math.min(b.pairA.player1, b.pairA.player2, b.pairB.player1, b.pairB.player2);
-    return minA - minB;
-  });
+  // コート割り当てをランダム化（評価品質に影響なし）
+  shuffle(matches);
 
   return matches;
 }
