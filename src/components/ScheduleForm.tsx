@@ -11,6 +11,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Tooltip,
+  Badge,
 } from '@mui/material';
 import TuneIcon from '@mui/icons-material/Tune';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
@@ -101,46 +103,80 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
   const estimatedTime = estimateTime();
 
   return (
-    <Paper sx={{ p: 3, mb: 3 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+    <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1, sm: 2 } }}>
         <Typography variant="h6">
           スケジュール設定
         </Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<PersonAddIcon />}
-            onClick={onPlayerChangeClick}
-            disabled={!hasSchedule || isGenerating}
-          >
-            参加者の変更
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<GroupIcon />}
-            onClick={() => setFixedPairsOpen(true)}
-            disabled={isGenerating}
-          >
-            {fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : '固定ペア'}
-          </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<TuneIcon />}
-            onClick={() => setAdvancedOpen(true)}
-            disabled={isGenerating}
-          >
-            詳細設定
-          </Button>
+          <Tooltip title="参加者の変更">
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PersonAddIcon />}
+                onClick={onPlayerChangeClick}
+                disabled={!hasSchedule || isGenerating}
+                sx={{
+                  minWidth: { xs: 'auto', sm: undefined },
+                  '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  参加者の変更
+                </Box>
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : '固定ペア'}>
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  fixedPairs.length > 0
+                    ? <Badge badgeContent={fixedPairs.length} color="primary"><GroupIcon /></Badge>
+                    : <GroupIcon />
+                }
+                onClick={() => setFixedPairsOpen(true)}
+                disabled={isGenerating}
+                sx={{
+                  minWidth: { xs: 'auto', sm: undefined },
+                  '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : '固定ペア'}
+                </Box>
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title="詳細設定">
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<TuneIcon />}
+                onClick={() => setAdvancedOpen(true)}
+                disabled={isGenerating}
+                sx={{
+                  minWidth: { xs: 'auto', sm: undefined },
+                  '& .MuiButton-startIcon': { mr: { xs: 0, sm: 1 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  詳細設定
+                </Box>
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
       </Box>
 
       <form onSubmit={handleSubmit}>
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {/* コート数 */}
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={6} sm={4} order={{ xs: 1, sm: 1 }}>
             <Typography gutterBottom>
               コート数: {courts}
             </Typography>
@@ -161,8 +197,29 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
             />
           </Grid>
 
+          {/* ラウンド数 */}
+          <Grid item xs={6} sm={4} order={{ xs: 2, sm: 3 }}>
+            <Typography gutterBottom>
+              ラウンド数: {rounds}
+            </Typography>
+            <Slider
+              value={rounds}
+              onChange={(_, value) => setRounds(value as number)}
+              min={1}
+              max={10}
+              step={1}
+              marks={[
+                { value: 1, label: '1' },
+                { value: 5, label: '5' },
+                { value: 10, label: '10' },
+              ]}
+              valueLabelDisplay="auto"
+              disabled={isGenerating}
+            />
+          </Grid>
+
           {/* 参加人数 */}
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={4} order={{ xs: 3, sm: 2 }}>
             <Typography gutterBottom>
               参加人数: {players}
             </Typography>
@@ -193,29 +250,8 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
             )}
           </Grid>
 
-          {/* ラウンド数 */}
-          <Grid item xs={12} sm={4}>
-            <Typography gutterBottom>
-              ラウンド数: {rounds}
-            </Typography>
-            <Slider
-              value={rounds}
-              onChange={(_, value) => setRounds(value as number)}
-              min={1}
-              max={10}
-              step={1}
-              marks={[
-                { value: 1, label: '1' },
-                { value: 5, label: '5' },
-                { value: 10, label: '10' },
-              ]}
-              valueLabelDisplay="auto"
-              disabled={isGenerating}
-            />
-          </Grid>
-
           {/* 送信ボタン */}
-          <Grid item xs={12}>
+          <Grid item xs={12} order={4}>
             {isGenerating ? (
               <Button
                 type="button"
@@ -246,7 +282,7 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
       </form>
 
       {/* 情報メッセージ */}
-      <Box sx={{ mt: 2 }}>
+      <Box sx={{ mt: { xs: 1, sm: 2 } }}>
         <Typography variant="caption" color="text.secondary">
           推奨: 2面コート。3面以上は計算時間が増加します。
         </Typography>
