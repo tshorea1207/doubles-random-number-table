@@ -20,6 +20,7 @@ import {
   DialogActions,
   Button,
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import type { Schedule, Match, Round } from "../types/schedule";
@@ -29,6 +30,7 @@ interface ScheduleTableProps {
   schedule: Schedule;
   completedMatches: Set<string>;
   onToggleComplete: (matchId: string) => void;
+  onAddRound?: () => void;
 }
 
 /** 色付きバッジでマッチを表示（デスクトップ用） */
@@ -66,7 +68,7 @@ function MatchCell({ match }: { match: Match }) {
   );
 }
 
-export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: ScheduleTableProps) {
+export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
 
   const handleRoundClick = (round: Round) => {
@@ -220,6 +222,15 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete }: 
           );
         })}
       </Box>
+      {/* ラウンド追加ボタン */}
+      {onAddRound && (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={onAddRound}>
+            ラウンド追加
+          </Button>
+        </Box>
+      )}
+
       {/* ラウンド詳細ダイアログ */}
       <Dialog
         open={selectedRound !== null}

@@ -55,6 +55,19 @@ function App() {
     [regenerate],
   );
 
+  const handleAddRound = useCallback(() => {
+    if (!schedule || !lastParams) return;
+    isRegenerating.current = true;
+    regenerate({
+      courtsCount: schedule.courts,
+      completedRounds: schedule.rounds,
+      activePlayers: schedule.activePlayers,
+      remainingRoundsCount: 1,
+      weights: lastParams.weights,
+      fixedPairs: schedule.fixedPairs,
+    });
+  }, [schedule, lastParams, regenerate]);
+
   return (
     <>
       {/* ヘッダー */}
@@ -98,7 +111,12 @@ function App() {
         {/* 結果 */}
         {displaySchedule && (
           <>
-            <ScheduleTable schedule={displaySchedule} completedMatches={completedMatches} onToggleComplete={handleToggleComplete} />
+            <ScheduleTable
+              schedule={displaySchedule}
+              completedMatches={completedMatches}
+              onToggleComplete={handleToggleComplete}
+              onAddRound={!isGenerating && schedule && lastParams ? handleAddRound : undefined}
+            />
             {!isGenerating && schedule && <EvaluationDisplay evaluation={schedule.evaluation} />}
             {/* 参加者変更ダイアログ */}
             {!isGenerating && schedule && lastParams && (
