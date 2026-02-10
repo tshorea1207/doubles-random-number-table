@@ -39,6 +39,8 @@ interface ScheduleTableProps {
   onAddRound?: () => void;
   openedAt: Record<string, Date>;
   onRoundOpened: (roundNumber: string) => void;
+  speechPitch: number;
+  speechRate: number;
 }
 
 /** 色付きバッジでマッチを表示（デスクトップ用） */
@@ -80,10 +82,10 @@ function formatTime(date: Date): string {
   return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 }
 
-export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound, openedAt, onRoundOpened }: ScheduleTableProps) {
+export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound, openedAt, onRoundOpened, speechPitch, speechRate }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
   const [completedExpanded, setCompletedExpanded] = useState(false);
-  const { speak, stop, isSpeaking } = useSpeech();
+  const { speak, stop, isSpeaking } = useSpeech(speechPitch, speechRate);
 
   // ダイアログが閉じたら読み上げを停止
   useEffect(() => {

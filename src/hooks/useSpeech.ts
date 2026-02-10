@@ -24,7 +24,7 @@ export function buildSpeechText(round: Round): string {
 /**
  * Web Speech API (SpeechSynthesis) のラッパー hook
  */
-export function useSpeech() {
+export function useSpeech(pitch: number = 1.0, rate: number = 1.0) {
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
@@ -38,7 +38,8 @@ export function useSpeech() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "ja-JP";
-    utterance.rate = 2.0;
+    utterance.rate = rate;
+    utterance.pitch = pitch;
 
     const voices = window.speechSynthesis.getVoices();
     const jaVoice = voices.find((v) => v.lang.startsWith("ja"));
@@ -51,7 +52,7 @@ export function useSpeech() {
     utterance.onerror = () => setIsSpeaking(false);
 
     window.speechSynthesis.speak(utterance);
-  }, []);
+  }, [pitch, rate]);
 
   const stop = useCallback(() => {
     window.speechSynthesis.cancel();

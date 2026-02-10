@@ -29,9 +29,13 @@ interface ScheduleFormProps {
   isGenerating: boolean;
   hasSchedule?: boolean;
   onPlayerChangeClick?: () => void;
+  speechPitch: number;
+  onSpeechPitchChange: (pitch: number) => void;
+  speechRate: number;
+  onSpeechRateChange: (rate: number) => void;
 }
 
-export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, onPlayerChangeClick }: ScheduleFormProps) {
+export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, onPlayerChangeClick, speechPitch, onSpeechPitchChange, speechRate, onSpeechRateChange }: ScheduleFormProps) {
   const [courts, setCourts] = useState(4);
   const [players, setPlayers] = useState(16);
   const [rounds, setRounds] = useState(15);
@@ -344,6 +348,42 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
             <br />
             スコアが小さいほど公平な組み合わせです。
           </Typography>
+
+          {/* 読み上げ速度 */}
+          <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: "divider" }}>
+            <Typography gutterBottom>読み上げ速度: {speechRate.toFixed(1)}</Typography>
+            <Slider
+              value={speechRate}
+              onChange={(_, value) => onSpeechRateChange(value as number)}
+              min={0.5}
+              max={4.0}
+              step={0.1}
+              marks={[
+                { value: 0.5, label: "0.5" },
+                { value: 2.0, label: "2.0" },
+                { value: 4.0, label: "4.0" },
+              ]}
+              valueLabelDisplay="auto"
+            />
+          </Box>
+
+          {/* 読み上げピッチ */}
+          <Box sx={{ mt: 2 }}>
+            <Typography gutterBottom>読み上げピッチ: {speechPitch.toFixed(1)}</Typography>
+            <Slider
+              value={speechPitch}
+              onChange={(_, value) => onSpeechPitchChange(value as number)}
+              min={0.1}
+              max={2.0}
+              step={0.1}
+              marks={[
+                { value: 0.1, label: "0.1" },
+                { value: 1.0, label: "1.0" },
+                { value: 2.0, label: "2.0" },
+              ]}
+              valueLabelDisplay="auto"
+            />
+          </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAdvancedOpen(false)}>閉じる</Button>

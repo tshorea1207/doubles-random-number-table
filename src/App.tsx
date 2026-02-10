@@ -15,6 +15,8 @@ function App() {
   const [openedAt, setOpenedAt] = useState<Record<string, Date>>({});
   const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
   const [playerChangeOpen, setPlayerChangeOpen] = useState(false);
+  const [speechPitch, setSpeechPitch] = useState(1.0);
+  const [speechRate, setSpeechRate] = useState(1.0);
 
   // 新規生成か再生成かを区別するためのフラグ
   const isRegenerating = useRef(false);
@@ -97,6 +99,10 @@ function App() {
           isGenerating={isGenerating}
           hasSchedule={!isGenerating && !!schedule && !!lastParams}
           onPlayerChangeClick={() => setPlayerChangeOpen(true)}
+          speechPitch={speechPitch}
+          onSpeechPitchChange={setSpeechPitch}
+          speechRate={speechRate}
+          onSpeechRateChange={setSpeechRate}
         />
 
         {/* 進捗付きローディング状態 */}
@@ -126,6 +132,8 @@ function App() {
               onAddRound={!isGenerating && schedule && lastParams ? handleAddRound : undefined}
               openedAt={openedAt}
               onRoundOpened={handleRoundOpened}
+              speechPitch={speechPitch}
+              speechRate={speechRate}
             />
             {schedule && (
               <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>
