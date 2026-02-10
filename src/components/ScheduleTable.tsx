@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -26,8 +26,11 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import StopIcon from "@mui/icons-material/Stop";
 import type { Schedule, Match, Round } from "../types/schedule";
 import { scheduleColors } from "../theme";
+import { useSpeech, buildSpeechText } from "../hooks/useSpeech";
 
 interface ScheduleTableProps {
   schedule: Schedule;
@@ -74,6 +77,24 @@ function MatchCell({ match }: { match: Match }) {
 export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
   const [completedExpanded, setCompletedExpanded] = useState(false);
+  const { speak, stop, isSpeaking } = useSpeech();
+
+  // ダイアログが閉じたら読み上げを停止
+  useEffect(() => {
+    if (!selectedRound) stop();
+  }, [selectedRound, stop]);
+
+  const handleDialogClose = () => {
+    setSelectedRound(null);
+  };
+
+  const handleSpeechToggle = () => {
+    if (isSpeaking) {
+      stop();
+    } else if (selectedRound) {
+      speak(buildSpeechText(selectedRound));
+    }
+  };
 
   const handleRoundClick = (round: Round) => {
     const roundId = `${round.roundNumber}`;
@@ -370,7 +391,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
       {/* ラウンド詳細ダイアログ */}
       <Dialog
         open={selectedRound !== null}
-        onClose={() => setSelectedRound(null)}
+        onClose={handleDialogClose}
         maxWidth="sm"
         fullWidth
         slotProps={{ paper: { sx: { mx: { xs: 1, sm: 4 } } } }}
@@ -429,7 +450,15 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
               )}
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setSelectedRound(null)}>閉じる</Button>
+              <IconButton
+                onClick={handleSpeechToggle}
+                color={isSpeaking ? "error" : "primary"}
+                aria-label={isSpeaking ? "読み上げ停止" : "読み上げ"}
+                sx={{ mr: "auto" }}
+              >
+                {isSpeaking ? <StopIcon /> : <VolumeUpIcon />}
+              </IconButton>
+              <Button onClick={handleDialogClose}>閉じる</Button>
             </DialogActions>
           </>
         )}
