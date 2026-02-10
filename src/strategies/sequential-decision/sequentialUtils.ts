@@ -1,0 +1,293 @@
+/**
+ * 逐次決定法のユーティリティ関数
+ */
+
+import type { CountMatrix, FixedPair } from '../../types/schedule';
+
+/**
+ * 配列からランダムに1要素を選択する
+ */
+export function randomPick(arr: number[]): number {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * 配列をその場でシャッフルする（Fisher-Yates）
+ */
+export function shuffle<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * 休憩者を1パターン決定する
+ *
+ * 休憩回数が最少のプレイヤーから優先的に必要人数を選択する。
+ * 同じ休憩回数のプレイヤーが複数いる場合はランダムに選ぶ。
+ *
+ * @param allPlayers - 全プレイヤー番号
+ * @param restCount - 休憩させる人数
+ * @param restCounts - 各プレイヤーの現在の休憩回数（0-based index）
+ * @returns 休憩者のプレイヤー番号配列（昇順）
+ */
+export function selectRestingPlayers(
+  allPlayers: number[],
+  restCount: number,
+  restCounts: number[]
+): number[] {
+  if (restCount === 0) return [];
+
+  // プレイヤーを休憩回数でソートし、同じ回数内はシャッフル
+  const sorted = [...allPlayers].sort((a, b) => {
+    const diff = restCounts[a - 1] - restCounts[b - 1];
+    if (diff !== 0) return diff;
+    return Math.random() - 0.5;
+  });
+
+  return sorted.slice(0, restCount).sort((a, b) => a - b);
+}
+
+/**
+ * 候補からスコア最小のプレイヤーを選択する（タイブレークはランダム）
+ */
+function pickMinScore(candidates: number[], scoreFn: (p: number) => number): number {
+  let minScore = Infinity;
+  const best: number[] = [];
+  for (const p of candidates) {
+    const score = scoreFn(p);
+    if (score < minScore) {
+      minScore = score;
+      best.length = 0;
+      best.push(p);
+    } else if (score === minScore) {
+      best.push(p);
+    }
+  }
+  return best[Math.floor(Math.random() * best.length)];
+}
+
+/**
+ * available 配列から指定プレイヤーを除去する
+ */
+function removeFromAvailable(available: number[], player: number): void {
+  available.splice(available.indexOf(player), 1);
+}
+
+// === Phase 1: ハード制約 + バックトラック ===
+
+/**
+ * 1コートの4人をDFSバックトラックで割り当てる（ハード制約）
+ *
+ * p4で詰まったらp3を変更、p3で詰まったらp2を変更…と系統的に探索する。
+ * ハード制約が充足不可能な場合は null を返す。
+ *
+ * @param available - 利用可能なプレイヤー番号（成功時のみ変更される）
+ * @param pairHistory - ペア履歴行列
+ * @param opponentHistory - 対戦履歴行列
+ * @returns 成功時: [p1, p2, p3, p4]、失敗時: null
+ */
+export function tryAssignCourtWithBacktracking(
+  available: number[],
+  pairHistory: CountMatrix,
+  opponentHistory: CountMatrix,
+): [number, number, number, number] | null {
+  if (available.length < 4) return null;
+
+  const shuffled = shuffle([...available]);
+
+  for (const p1 of shuffled) {
+    const p2Candidates = shuffled.filter(p =>
+      p !== p1 && pairHistory[p1 - 1][p - 1] === 0
+    );
+
+    for (const p2 of p2Candidates) {
+      const p3Candidates = shuffled.filter(p =>
+        p !== p1 && p !== p2 &&
+        opponentHistory[p1 - 1][p - 1] === 0 &&
+        opponentHistory[p2 - 1][p - 1] === 0
+      );
+
+      for (const p3 of p3Candidates) {
+        const p4Candidates = shuffled.filter(p =>
+          p !== p1 && p !== p2 && p !== p3 &&
+          opponentHistory[p1 - 1][p - 1] === 0 &&
+          opponentHistory[p2 - 1][p - 1] === 0 &&
+          pairHistory[p3 - 1][p - 1] === 0
+        );
+
+        if (p4Candidates.length > 0) {
+          const p4 = p4Candidates[0];
+          removeFromAvailable(available, p1);
+          removeFromAvailable(available, p2);
+          removeFromAvailable(available, p3);
+          removeFromAvailable(available, p4);
+          return [p1, p2, p3, p4];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * 固定ペアを考慮したDFSバックトラック割り当て（ハード制約）
+ *
+ * 固定ペアが available に両方いる場合、それを p1, p2 として使用し、
+ * p3, p4 をバックトラックで探索する。
+ * 固定ペアがない場合は通常のバックトラック版にフォールバックする。
+ */
+export function tryAssignCourtWithBacktrackingFixedPairs(
+  available: number[],
+  pairHistory: CountMatrix,
+  opponentHistory: CountMatrix,
+  fixedPairs: FixedPair[],
+): [number, number, number, number] | null {
+  const availableSet = new Set(available);
+  const applicableFixed = fixedPairs.filter(
+    fp => availableSet.has(fp.player1) && availableSet.has(fp.player2)
+  );
+
+  if (applicableFixed.length > 0) {
+    const shuffledFixed = shuffle([...applicableFixed]);
+    for (const fp of shuffledFixed) {
+      const p1 = fp.player1;
+      const p2 = fp.player2;
+      const remaining = shuffle(available.filter(p => p !== p1 && p !== p2));
+
+      for (const p3 of remaining) {
+        if (opponentHistory[p1 - 1][p3 - 1] !== 0 || opponentHistory[p2 - 1][p3 - 1] !== 0) continue;
+
+        const p4Candidates = remaining.filter(p =>
+          p !== p3 &&
+          opponentHistory[p1 - 1][p - 1] === 0 &&
+          opponentHistory[p2 - 1][p - 1] === 0 &&
+          pairHistory[p3 - 1][p - 1] === 0
+        );
+
+        if (p4Candidates.length > 0) {
+          const p4 = p4Candidates[0];
+          removeFromAvailable(available, p1);
+          removeFromAvailable(available, p2);
+          removeFromAvailable(available, p3);
+          removeFromAvailable(available, p4);
+          return [p1, p2, p3, p4];
+        }
+      }
+    }
+    return null;
+  }
+
+  return tryAssignCourtWithBacktracking(available, pairHistory, opponentHistory);
+}
+
+// === Phase 2: スコアリングベースのフォールバック（常に成功） ===
+
+/**
+ * 1コートの4人をスコアリングで割り当てる（常に成功）
+ *
+ * ハード制約の代わりに、履歴カウントが最小のプレイヤーを優先的に選択する。
+ * 制約が充足不可能な状況でも必ず結果を返す。
+ *
+ * @param available - 利用可能なプレイヤー番号（この関数内で変更される）
+ * @param pairHistory - ペア履歴行列
+ * @param opponentHistory - 対戦履歴行列
+ * @returns [p1, p2, p3, p4]（常に成功）
+ */
+export function assignCourtWithScoring(
+  available: number[],
+  pairHistory: CountMatrix,
+  opponentHistory: CountMatrix,
+): [number, number, number, number] {
+  const p1 = randomPick(available);
+  removeFromAvailable(available, p1);
+
+  const p2 = pickMinScore(available, p => pairHistory[p1 - 1][p - 1]);
+  removeFromAvailable(available, p2);
+
+  const p3 = pickMinScore(available, p =>
+    opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1]
+  );
+  removeFromAvailable(available, p3);
+
+  const p4 = pickMinScore(available, p =>
+    opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1] + pairHistory[p3 - 1][p - 1]
+  );
+  removeFromAvailable(available, p4);
+
+  return [p1, p2, p3, p4];
+}
+
+/**
+ * 固定ペアを考慮したスコアリング割り当て（常に成功）
+ */
+export function assignCourtWithScoringFixedPairs(
+  available: number[],
+  pairHistory: CountMatrix,
+  opponentHistory: CountMatrix,
+  fixedPairs: FixedPair[],
+): [number, number, number, number] {
+  const availableSet = new Set(available);
+  const applicableFixed = fixedPairs.filter(
+    fp => availableSet.has(fp.player1) && availableSet.has(fp.player2)
+  );
+
+  if (applicableFixed.length > 0) {
+    const fp = applicableFixed[Math.floor(Math.random() * applicableFixed.length)];
+    const p1 = fp.player1;
+    const p2 = fp.player2;
+    removeFromAvailable(available, p1);
+    removeFromAvailable(available, p2);
+
+    const p3 = pickMinScore(available, p =>
+      opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1]
+    );
+    removeFromAvailable(available, p3);
+
+    const p4 = pickMinScore(available, p =>
+      opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1] + pairHistory[p3 - 1][p - 1]
+    );
+    removeFromAvailable(available, p4);
+
+    return [p1, p2, p3, p4];
+  }
+
+  return assignCourtWithScoring(available, pairHistory, opponentHistory);
+}
+
+/**
+ * コート割り当て結果からMatch配列を構築し正規化する
+ *
+ * @param courtAssignments - 各コートの [p1, p2, p3, p4] 配列
+ * @returns 正規化されたMatch配列
+ */
+export function buildNormalizedMatches(
+  courtAssignments: [number, number, number, number][]
+): { pairA: { player1: number; player2: number }; pairB: { player1: number; player2: number } }[] {
+  const matches = courtAssignments.map(([p1, p2, p3, p4]) => {
+    // ペア内ソート
+    const pair1 = p1 < p2 ? { player1: p1, player2: p2 } : { player1: p2, player2: p1 };
+    const pair2 = p3 < p4 ? { player1: p3, player2: p4 } : { player1: p4, player2: p3 };
+
+    // ペア間ソート: min(pairA) < min(pairB)
+    const minPair1 = Math.min(pair1.player1, pair1.player2);
+    const minPair2 = Math.min(pair2.player1, pair2.player2);
+    if (minPair1 < minPair2) {
+      return { pairA: pair1, pairB: pair2 };
+    } else {
+      return { pairA: pair2, pairB: pair1 };
+    }
+  });
+
+  // コート間ソート: min(court[i]) < min(court[i+1])
+  matches.sort((a, b) => {
+    const minA = Math.min(a.pairA.player1, a.pairA.player2, a.pairB.player1, a.pairB.player2);
+    const minB = Math.min(b.pairA.player1, b.pairA.player2, b.pairB.player1, b.pairB.player2);
+    return minA - minB;
+  });
+
+  return matches;
+}

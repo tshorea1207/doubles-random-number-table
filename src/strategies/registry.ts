@@ -4,18 +4,20 @@
  * 利用可能なスケジュール生成アルゴリズムの登録と取得を管理する。
  */
 
-import type { ScheduleStrategy, StrategyId, StrategyMeta } from './types';
-import { GreedyStrategy } from './greedy';
+import type { ScheduleStrategy, StrategyId, StrategyMeta } from "./types";
+import { GreedyStrategy } from "./greedy";
+import { SequentialDecisionStrategy } from "./sequential-decision";
 
 const strategies: Map<StrategyId, ScheduleStrategy> = new Map();
 
-// デフォルトストラテジーを登録
-strategies.set('greedy', new GreedyStrategy());
+// ストラテジーを登録
+strategies.set("greedy", new GreedyStrategy());
+strategies.set("sequential-decision", new SequentialDecisionStrategy());
 
 /**
  * デフォルトのストラテジーID
  */
-export const DEFAULT_STRATEGY_ID: StrategyId = 'greedy';
+export const DEFAULT_STRATEGY_ID: StrategyId = "sequential-decision";
 
 /**
  * 指定IDのストラテジーを取得する
@@ -32,7 +34,7 @@ export function getStrategy(id: StrategyId): ScheduleStrategy {
  * 利用可能なストラテジーのメタ情報一覧を取得する
  */
 export function getAvailableStrategies(): StrategyMeta[] {
-  return Array.from(strategies.values()).map(s => s.meta);
+  return Array.from(strategies.values()).map((s) => s.meta);
 }
 
 /**
