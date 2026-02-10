@@ -169,28 +169,8 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
             />
           </Grid>
 
-          {/* ラウンド数 */}
-          <Grid item xs={6} sm={4} order={{ xs: 2, sm: 3 }}>
-            <Typography gutterBottom>ラウンド数: {rounds}</Typography>
-            <Slider
-              value={rounds}
-              onChange={(_, value) => setRounds(value as number)}
-              min={1}
-              max={20}
-              step={1}
-              marks={[
-                { value: 1, label: "1" },
-                { value: 5, label: "5" },
-                { value: 10, label: "10" },
-                { value: 20, label: "20" },
-              ]}
-              valueLabelDisplay="auto"
-              disabled={isGenerating}
-            />
-          </Grid>
-
           {/* 参加人数 */}
-          <Grid item xs={12} sm={4} order={{ xs: 3, sm: 2 }}>
+          <Grid item xs={6} sm={4} order={{ xs: 2, sm: 2 }}>
             <Typography gutterBottom>参加人数: {players}</Typography>
             <Slider
               value={players}
@@ -251,6 +231,26 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
       <Dialog open={advancedOpen} onClose={() => setAdvancedOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>詳細設定</DialogTitle>
         <DialogContent>
+          {/* ラウンド数 */}
+          <Box sx={{ mt: 1, mb: 3 }}>
+            <Typography gutterBottom>ラウンド数: {rounds}</Typography>
+            <Slider
+              value={rounds}
+              onChange={(_, value) => setRounds(value as number)}
+              min={1}
+              max={20}
+              step={1}
+              marks={[
+                { value: 1, label: "1" },
+                { value: 5, label: "5" },
+                { value: 10, label: "10" },
+                { value: 20, label: "20" },
+              ]}
+              valueLabelDisplay="auto"
+              disabled={isGenerating}
+            />
+          </Box>
+
           {/* 重み W1 */}
           <Box sx={{ mt: 1, mb: 3 }}>
             <Box sx={{ display: "flex", alignItems: "center" }}>
