@@ -78,6 +78,7 @@ export function useScheduleGenerator(strategyId: StrategyId = DEFAULT_STRATEGY_I
         setSchedule(result);
         setPartialSchedule(null);
         setIsGenerating(false);
+        setProgress(null);
       })
       .catch((err) => {
         if (err instanceof DOMException && err.name === 'AbortError') {
@@ -129,6 +130,7 @@ export function useScheduleGenerator(strategyId: StrategyId = DEFAULT_STRATEGY_I
         setSchedule(result);
         setPartialSchedule(null);
         setIsGenerating(false);
+        setProgress(null);
       })
       .catch((err) => {
         if (err instanceof DOMException && err.name === 'AbortError') {

@@ -90,16 +90,14 @@ function App() {
         />
 
         {/* 進捗付きローディング状態 */}
-        {isGenerating && (
-          <Box sx={{ my: 4 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-              {progress
-                ? `ラウンド ${progress.currentRound} / ${progress.totalRounds} 生成中 - 評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
-                : "生成を準備中..."}
-            </Typography>
-            <LinearProgress variant={progress ? "determinate" : "indeterminate"} value={progress?.percentage || 0} />
-          </Box>
-        )}
+        <Box sx={{ my: 4, visibility: isGenerating ? "visible" : "hidden" }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            {progress
+              ? `ラウンド ${progress.currentRound} / ${progress.totalRounds} 生成中 - 評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
+              : "生成を準備中..."}
+          </Typography>
+          <LinearProgress key={String(isGenerating)} variant={progress ? "determinate" : "indeterminate"} value={progress?.percentage || 0} />
+        </Box>
 
         {/* エラー状態 */}
         {error && (
