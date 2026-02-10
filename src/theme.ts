@@ -72,8 +72,8 @@ const theme = createTheme({
 export const scheduleColors = {
   teamA: '#e3f2fd',
   teamB: '#fff3e0',
-  completedRow: '#f5f5f5',
-  completedRowHover: '#eeeeee',
+  completedRow: '#bdbdbd',
+  completedRowHover: '#b0b0b0',
   rowHover: '#fafafa',
 };
 
