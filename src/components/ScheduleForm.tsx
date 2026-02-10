@@ -19,7 +19,7 @@ import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import GroupIcon from "@mui/icons-material/Group";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import type { ScheduleParams, FixedPair } from "../types/schedule";
-import { useBenchmarkCalibration } from "../hooks/useBenchmarkCalibration";
+
 import { FixedPairsInput } from "./FixedPairsInput";
 import { validateFixedPairs } from "../utils/fixedPairs";
 
@@ -43,8 +43,6 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [fixedPairsOpen, setFixedPairsOpen] = useState(false);
 
-  // ハードウェア性能に基づく動的キャリブレーション係数
-  const { coefficient } = useBenchmarkCalibration();
 
   // 参加人数変更時に無効な固定ペアを削除
   useEffect(() => {
@@ -75,28 +73,6 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
   const restingCount = Math.max(0, players - courts * 4);
   const restingMessage = restingCount > 0 ? `毎ラウンド ${restingCount} 人が休憩` : "";
 
-  // 設定に基づいて生成時間を推定
-  const estimateTime = (): string => {
-    if (!isValid) return "";
-
-    const baseComplexity = Math.pow(players / 4, courts * 1.5);
-    const roundFactor = Math.max(rounds - 1, 1);
-
-    let seconds = baseComplexity * roundFactor * coefficient;
-
-    if (seconds < 1) {
-      return "< 1秒";
-    } else if (seconds < 60) {
-      return `約${Math.round(seconds)}秒`;
-    } else if (seconds < 300) {
-      const minutes = Math.round(seconds / 60);
-      return `約${minutes}分`;
-    } else {
-      return "5分以上";
-    }
-  };
-
-  const estimatedTime = estimateTime();
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
@@ -251,7 +227,7 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
               </Button>
             ) : (
               <Button type="submit" variant="contained" color="primary" size="large" fullWidth disabled={!isValid}>
-                {estimatedTime ? `スケジュール生成 (${estimatedTime})` : "スケジュール生成"}
+                スケジュール生成
               </Button>
             )}
           </Grid>
