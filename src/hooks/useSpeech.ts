@@ -3,7 +3,7 @@ import type { Round } from "../types/schedule";
 
 /**
  * ラウンドデータから読み上げ用テキストを生成
- * 例: "ラウンド1。コート1、1番2番 対 3番4番。コート2、5番6番 対 7番8番。休憩、9番10番。"
+ * 例: "ラウンド1。コート1、1、2、 3、4。コート2、5、6、 7、8。休憩、9、10。"
  */
 export function buildSpeechText(round: Round): string {
   const parts: string[] = [];
@@ -11,11 +11,11 @@ export function buildSpeechText(round: Round): string {
   parts.push(`ラウンド${round.roundNumber}`);
 
   round.matches.forEach((match, idx) => {
-    parts.push(`コート${idx + 1}、${match.pairA.player1}番${match.pairA.player2}番 対 ${match.pairB.player1}番${match.pairB.player2}番`);
+    parts.push(`コート${idx + 1}、${match.pairA.player1}、${match.pairA.player2}、 ${match.pairB.player1}、${match.pairB.player2}`);
   });
 
   if (round.restingPlayers && round.restingPlayers.length > 0) {
-    parts.push(`休憩、${round.restingPlayers.map((p) => `${p}番`).join("")}`);
+    parts.push(`休憩、${round.restingPlayers.join("、")}`);
   }
 
   return parts.join("。") + "。";
@@ -38,7 +38,7 @@ export function useSpeech() {
 
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "ja-JP";
-    utterance.rate = 0.9;
+    utterance.rate = 2.0;
 
     const voices = window.speechSynthesis.getVoices();
     const jaVoice = voices.find((v) => v.lang.startsWith("ja"));
