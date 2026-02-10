@@ -116,6 +116,7 @@ export interface CumulativeState {
   restSum: number;           // 休憩回数の合計
   restSumSq: number;         // 休憩回数の二乗和
   restN: number;             // プレイヤー数
+  pairMax: number;           // ペア回数の最大値（辞書式順序評価用）
 }
 
 /**

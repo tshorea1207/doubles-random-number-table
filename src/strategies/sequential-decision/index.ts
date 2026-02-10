@@ -315,7 +315,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
    * スコアリングフォールバック用の軽量評価
    *
    * 候補の割り当てに対して、既存の履歴カウントの合計を返す。
-   * 値が小さいほど重複が少なく良い。
+   * pairMax（ペア回数最大値）を辞書式順序で最優先し、
+   * 同じ pairMax 内でカウント合計を比較する。
    */
   private quickEvaluate(
     courtAssignments: [number, number, number, number][],
@@ -323,7 +324,13 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     opponentHistory: CountMatrix,
   ): number {
     let score = 0;
+    let pairMax = 0;
     for (const [p1, p2, p3, p4] of courtAssignments) {
+      const newPair1 = pairHistory[p1 - 1][p2 - 1] + 1;
+      const newPair2 = pairHistory[p3 - 1][p4 - 1] + 1;
+      if (newPair1 > pairMax) pairMax = newPair1;
+      if (newPair2 > pairMax) pairMax = newPair2;
+
       score += pairHistory[p1 - 1][p2 - 1];
       score += pairHistory[p3 - 1][p4 - 1];
       score += opponentHistory[p1 - 1][p3 - 1];
@@ -331,6 +338,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       score += opponentHistory[p2 - 1][p3 - 1];
       score += opponentHistory[p2 - 1][p4 - 1];
     }
-    return score;
+    const PAIR_MAX_PENALTY = 1000;
+    return pairMax * PAIR_MAX_PENALTY + score;
   }
 }

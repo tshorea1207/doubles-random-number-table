@@ -182,6 +182,7 @@ export function createCumulativeState(playersCount: number): CumulativeState {
     restSum: 0,
     restSumSq: 0,
     restN: playersCount,
+    pairMax: 0,
   };
 }
 
@@ -208,6 +209,8 @@ export function commitRoundToState(state: CumulativeState, round: Round): void {
     state.pairCounts[pa2][pa1]++;
     state.pairSum += 1;
     state.pairSumSq += 2 * oldPairA + 1;
+    const newPairA = oldPairA + 1;
+    if (newPairA > state.pairMax) state.pairMax = newPairA;
 
     // ペア回数: pairB (正規化済み: player1 < player2)
     const pb1 = pairB.player1 - 1;
@@ -217,6 +220,8 @@ export function commitRoundToState(state: CumulativeState, round: Round): void {
     state.pairCounts[pb2][pb1]++;
     state.pairSum += 1;
     state.pairSumSq += 2 * oldPairB + 1;
+    const newPairB = oldPairB + 1;
+    if (newPairB > state.pairMax) state.pairMax = newPairB;
 
     // 対戦回数: pairA vs pairB の4組み合わせ（配列生成なしで直接展開）
     const a1 = pairA.player1;
@@ -336,10 +341,11 @@ export function buildCumulativeStateForActivePlayers(
     }
   }
 
-  // アクティブプレイヤーのペアのみから sum/sumSq を計算
+  // アクティブプレイヤーのペアのみから sum/sumSq/pairMax を計算
   let pairSum = 0, pairSumSq = 0;
   let oppoSum = 0, oppoSumSq = 0;
   let restSum = 0, restSumSq = 0;
+  let pairMax = 0;
 
   for (let idx = 0; idx < activePlayers.length; idx++) {
     const i = activePlayers[idx] - 1;
@@ -347,6 +353,7 @@ export function buildCumulativeStateForActivePlayers(
       const j = activePlayers[jdx] - 1;
       pairSum += pairCounts[i][j];
       pairSumSq += pairCounts[i][j] ** 2;
+      if (pairCounts[i][j] > pairMax) pairMax = pairCounts[i][j];
       oppoSum += oppoCounts[i][j];
       oppoSumSq += oppoCounts[i][j] ** 2;
     }
@@ -370,6 +377,7 @@ export function buildCumulativeStateForActivePlayers(
     restSum,
     restSumSq,
     restN: n,
+    pairMax,
   };
 }
 
@@ -404,6 +412,7 @@ export function evaluateCandidate(
   let oppoSumSq = state.oppoSumSq;
   let restSum = state.restSum;
   let restSumSq = state.restSumSq;
+  let candidatePairMax = state.pairMax;
 
   for (let c = 0; c < courtsCount; c++) {
     const offset = c * 4;
@@ -416,11 +425,15 @@ export function evaluateCandidate(
     const oldPair1 = state.pairCounts[p1 - 1][p2 - 1];
     pairSum += 1;
     pairSumSq += 2 * oldPair1 + 1;
+    const newPair1 = oldPair1 + 1;
+    if (newPair1 > candidatePairMax) candidatePairMax = newPair1;
 
     // ペア: (p3, p4) - 正規化済み (p3 < p4)
     const oldPair2 = state.pairCounts[p3 - 1][p4 - 1];
     pairSum += 1;
     pairSumSq += 2 * oldPair2 + 1;
+    const newPair2 = oldPair2 + 1;
+    if (newPair2 > candidatePairMax) candidatePairMax = newPair2;
 
     // 対戦: (p1,p2) vs (p3,p4) の4組み合わせ（配列生成なしで直接展開）
     {
@@ -463,7 +476,12 @@ export function evaluateCandidate(
     ? Math.sqrt(Math.max(0, restSumSq / state.restN - (restSum / state.restN) ** 2))
     : 0;
 
-  return pairStdDev * weights.w1 + oppoStdDev * weights.w2 + restStdDev * weights.w3;
+  const totalScore = pairStdDev * weights.w1 + oppoStdDev * weights.w2 + restStdDev * weights.w3;
+
+  // 辞書式順序: pairMax を最優先し、同じ pairMax 内で totalScore で比較
+  // PAIR_MAX_PENALTY は totalScore の最大値（≒30程度）を十分上回る値
+  const PAIR_MAX_PENALTY = 1000;
+  return candidatePairMax * PAIR_MAX_PENALTY + totalScore;
 }
 
 /**
