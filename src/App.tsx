@@ -12,11 +12,20 @@ function App() {
   const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel } = useScheduleGenerator();
   const displaySchedule = schedule ?? partialSchedule;
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
+  const [openedAt, setOpenedAt] = useState<Record<string, Date>>({});
   const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
   const [playerChangeOpen, setPlayerChangeOpen] = useState(false);
 
   // 新規生成か再生成かを区別するためのフラグ
   const isRegenerating = useRef(false);
+
+  // ラウンドダイアログ初回オープン時刻を記録
+  const handleRoundOpened = useCallback((roundId: string) => {
+    setOpenedAt((prev) => {
+      if (prev[roundId]) return prev; // 初回のみ記録
+      return { ...prev, [roundId]: new Date() };
+    });
+  }, []);
 
   // トグルハンドラー
   const handleToggleComplete = useCallback((matchId: string) => {
@@ -35,6 +44,7 @@ function App() {
   useEffect(() => {
     if (isGenerating && !isRegenerating.current) {
       setCompletedMatches(new Set());
+      setOpenedAt({});
     }
   }, [isGenerating]);
 
@@ -114,6 +124,8 @@ function App() {
               completedMatches={completedMatches}
               onToggleComplete={handleToggleComplete}
               onAddRound={!isGenerating && schedule && lastParams ? handleAddRound : undefined}
+              openedAt={openedAt}
+              onRoundOpened={handleRoundOpened}
             />
             {schedule && (
               <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>

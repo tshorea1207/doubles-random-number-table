@@ -37,6 +37,8 @@ interface ScheduleTableProps {
   completedMatches: Set<string>;
   onToggleComplete: (matchId: string) => void;
   onAddRound?: () => void;
+  openedAt: Record<string, Date>;
+  onRoundOpened: (roundNumber: string) => void;
 }
 
 /** 色付きバッジでマッチを表示（デスクトップ用） */
@@ -74,7 +76,11 @@ function MatchCell({ match }: { match: Match }) {
   );
 }
 
-export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound }: ScheduleTableProps) {
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+}
+
+export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound, openedAt, onRoundOpened }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
   const [completedExpanded, setCompletedExpanded] = useState(false);
   const { speak, stop, isSpeaking } = useSpeech();
@@ -99,6 +105,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
   const handleRoundClick = (round: Round) => {
     const roundId = `${round.roundNumber}`;
     onToggleComplete(roundId);
+    onRoundOpened(roundId);
     setSelectedRound(round);
   };
 
@@ -194,6 +201,11 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                   >
                     <TableCell>
                       <strong>{round.roundNumber}</strong>
+                      {openedAt[`${round.roundNumber}`] && (
+                        <Typography variant="caption" display="block" color="text.secondary">
+                          {formatTime(openedAt[`${round.roundNumber}`])}
+                        </Typography>
+                      )}
                     </TableCell>
                     {round.matches.map((match, idx) => (
                       <TableCell key={idx} align="center">
@@ -230,6 +242,11 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                 >
                   <TableCell>
                     <strong>{round.roundNumber}</strong>
+                    {openedAt[`${round.roundNumber}`] && (
+                      <Typography variant="caption" display="block" color="text.secondary">
+                        {formatTime(openedAt[`${round.roundNumber}`])}
+                      </Typography>
+                    )}
                   </TableCell>
                   {round.matches.map((match, idx) => (
                     <TableCell key={idx} align="center">
@@ -287,6 +304,11 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                         <Typography variant="subtitle2" sx={{ flex: 1 }}>
                           ラウンド {round.roundNumber}
+                          {openedAt[`${round.roundNumber}`] && (
+                            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              {formatTime(openedAt[`${round.roundNumber}`])}
+                            </Typography>
+                          )}
                         </Typography>
                         <IconButton size="small" color="success" aria-label="未消化に戻す" sx={{ p: 0.5 }}>
                           <CheckCircleIcon />
@@ -341,6 +363,11 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                 <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                   <Typography variant="subtitle2" sx={{ flex: 1 }}>
                     ラウンド {round.roundNumber}
+                    {openedAt[`${round.roundNumber}`] && (
+                      <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                        {formatTime(openedAt[`${round.roundNumber}`])}
+                      </Typography>
+                    )}
                   </Typography>
                   <IconButton size="small" color="default" aria-label="消化済みにする" sx={{ p: 0.5 }}>
                     <CheckCircleOutlineIcon />
@@ -398,7 +425,14 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
       >
         {selectedRound && (
           <>
-            <DialogTitle>ラウンド {selectedRound.roundNumber}</DialogTitle>
+            <DialogTitle>
+              ラウンド {selectedRound.roundNumber}
+              {openedAt[`${selectedRound.roundNumber}`] && (
+                <Typography variant="caption" color="text.secondary" display="block">
+                  Opened at {formatTime(openedAt[`${selectedRound.roundNumber}`])}
+                </Typography>
+              )}
+            </DialogTitle>
             <DialogContent sx={{ px: { xs: 1.5, sm: 3 } }}>
               {selectedRound.matches.map((match, idx) => (
                 <Box key={idx} sx={{ mb: 2 }}>
