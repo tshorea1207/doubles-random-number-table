@@ -150,43 +150,53 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
       <form onSubmit={handleSubmit}>
         <Grid container spacing={{ xs: 2, sm: 3 }}>
           {/* コート数 */}
-          <Grid item xs={6} sm={4} order={{ xs: 1, sm: 1 }}>
-            <Typography gutterBottom>コート数: {courts}</Typography>
-            <Slider
-              value={courts}
-              onChange={(_, value) => setCourts(value as number)}
-              min={1}
-              max={8}
-              step={1}
-              marks={[
-                { value: 1, label: "1" },
-                { value: 2, label: "2" },
-                { value: 4, label: "4" },
-                { value: 8, label: "8" },
-              ]}
-              valueLabelDisplay="auto"
-              disabled={isGenerating}
-            />
+          <Grid item xs={12} sm={6} order={{ xs: 1, sm: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, pb: 2.5 }}>
+              <Typography sx={{ whiteSpace: "nowrap", minWidth: "7em" }}>
+                コート数: {courts}
+              </Typography>
+              <Slider
+                value={courts}
+                onChange={(_, value) => setCourts(value as number)}
+                min={1}
+                max={8}
+                step={1}
+                marks={[
+                  { value: 1, label: "1" },
+                  { value: 2, label: "2" },
+                  { value: 4, label: "4" },
+                  { value: 8, label: "8" },
+                ]}
+                valueLabelDisplay="auto"
+                disabled={isGenerating}
+                sx={{ mb: 0 }}
+              />
+            </Box>
           </Grid>
 
           {/* 参加人数 */}
-          <Grid item xs={6} sm={4} order={{ xs: 2, sm: 2 }}>
-            <Typography gutterBottom>参加人数: {players}</Typography>
-            <Slider
-              value={players}
-              onChange={(_, value) => setPlayers(value as number)}
-              min={4}
-              max={32}
-              step={1}
-              marks={[
-                { value: 4, label: "4" },
-                { value: 8, label: "8" },
-                { value: 16, label: "16" },
-                { value: 32, label: "32" },
-              ]}
-              valueLabelDisplay="auto"
-              disabled={isGenerating}
-            />
+          <Grid item xs={12} sm={6} order={{ xs: 2, sm: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, pb: 2.5 }}>
+              <Typography sx={{ whiteSpace: "nowrap", minWidth: "7em" }}>
+                参加人数: {players}
+              </Typography>
+              <Slider
+                value={players}
+                onChange={(_, value) => setPlayers(value as number)}
+                min={4}
+                max={32}
+                step={1}
+                marks={[
+                  { value: 4, label: "4" },
+                  { value: 8, label: "8" },
+                  { value: 16, label: "16" },
+                  { value: 32, label: "32" },
+                ]}
+                valueLabelDisplay="auto"
+                disabled={isGenerating}
+                sx={{ mb: 0 }}
+              />
+            </Box>
             {errorMessage && (
               <Typography variant="caption" color="error">
                 {errorMessage}
