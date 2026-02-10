@@ -115,7 +115,11 @@ function App() {
               onToggleComplete={handleToggleComplete}
               onAddRound={!isGenerating && schedule && lastParams ? handleAddRound : undefined}
             />
-            {!isGenerating && schedule && <EvaluationDisplay evaluation={schedule.evaluation} />}
+            {schedule && (
+              <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>
+                <EvaluationDisplay evaluation={schedule.evaluation} />
+              </Box>
+            )}
             {/* 参加者変更ダイアログ */}
             {!isGenerating && schedule && lastParams && (
               <PlayerChangePanel
@@ -128,7 +132,11 @@ function App() {
                 onRegenerate={handleRegenerate}
               />
             )}
-            {!isGenerating && schedule && <PlayerStatsTable schedule={schedule} />}
+            {schedule && (
+              <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>
+                <PlayerStatsTable schedule={schedule} />
+              </Box>
+            )}
           </>
         )}
       </Container>
