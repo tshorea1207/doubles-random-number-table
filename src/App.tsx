@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { AppBar, Toolbar, Container, Typography, Box, LinearProgress } from "@mui/material";
-import SportsTennisIcon from "@mui/icons-material/SportsTennis";
 import { useScheduleGenerator } from "./hooks/useScheduleGenerator";
 import { ScheduleForm } from "./components/ScheduleForm";
 import { ScheduleTable } from "./components/ScheduleTable";
