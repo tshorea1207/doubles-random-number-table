@@ -74,7 +74,7 @@ function App() {
       <AppBar position="static" sx={{ borderRadius: 0 }}>
         <Toolbar variant="dense">
           <Typography variant="h6" component="h1" sx={{ fontWeight: "bold" }}>
-            ダブルスガチャ
+            ダブルスガチャシミュレータ
           </Typography>
         </Toolbar>
       </AppBar>
