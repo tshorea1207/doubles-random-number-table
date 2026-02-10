@@ -1,12 +1,13 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Container, Typography, Box, LinearProgress } from '@mui/material';
-import { useScheduleGenerator } from './hooks/useScheduleGenerator';
-import { ScheduleForm } from './components/ScheduleForm';
-import { ScheduleTable } from './components/ScheduleTable';
-import { EvaluationDisplay } from './components/EvaluationDisplay';
-import { PlayerStatsTable } from './components/PlayerStatsTable';
-import { PlayerChangePanel } from './components/PlayerChangePanel';
-import type { ScheduleParams, RegenerationParams } from './types/schedule';
+import { useState, useCallback, useEffect, useRef } from "react";
+import { AppBar, Toolbar, Container, Typography, Box, LinearProgress } from "@mui/material";
+import SportsTennisIcon from "@mui/icons-material/SportsTennis";
+import { useScheduleGenerator } from "./hooks/useScheduleGenerator";
+import { ScheduleForm } from "./components/ScheduleForm";
+import { ScheduleTable } from "./components/ScheduleTable";
+import { EvaluationDisplay } from "./components/EvaluationDisplay";
+import { PlayerStatsTable } from "./components/PlayerStatsTable";
+import { PlayerChangePanel } from "./components/PlayerChangePanel";
+import type { ScheduleParams, RegenerationParams } from "./types/schedule";
 
 function App() {
   const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel } = useScheduleGenerator();
@@ -20,7 +21,7 @@ function App() {
 
   // トグルハンドラー
   const handleToggleComplete = useCallback((matchId: string) => {
-    setCompletedMatches(prev => {
+    setCompletedMatches((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(matchId)) {
         newSet.delete(matchId);
@@ -38,88 +39,85 @@ function App() {
     }
   }, [isGenerating]);
 
-  const handleGenerate = useCallback((params: ScheduleParams) => {
-    setLastParams(params);
-    isRegenerating.current = false;
-    generate(params);
-  }, [generate]);
+  const handleGenerate = useCallback(
+    (params: ScheduleParams) => {
+      setLastParams(params);
+      isRegenerating.current = false;
+      generate(params);
+    },
+    [generate],
+  );
 
-  const handleRegenerate = useCallback((params: RegenerationParams) => {
-    isRegenerating.current = true;
-    regenerate(params);
-  }, [regenerate]);
+  const handleRegenerate = useCallback(
+    (params: RegenerationParams) => {
+      isRegenerating.current = true;
+      regenerate(params);
+    },
+    [regenerate],
+  );
 
   return (
-    <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1, sm: 3 } }}>
+    <>
       {/* ヘッダー */}
-      <Typography variant="h3" component="h1" gutterBottom>
-        テニス ダブルス組み合わせ最適化
-      </Typography>
-
-      <Typography variant="body1" color="text.secondary" paragraph>
-        貪欲法アルゴリズムを使用して、公平なダブルスの対戦表を自動生成します
-      </Typography>
-
-      {/* 入力フォーム */}
-      <ScheduleForm
-        onGenerate={handleGenerate}
-        onCancel={cancel}
-        isGenerating={isGenerating}
-        hasSchedule={!isGenerating && !!schedule && !!lastParams}
-        onPlayerChangeClick={() => setPlayerChangeOpen(true)}
-      />
-
-      {/* 進捗付きローディング状態 */}
-      {isGenerating && (
-        <Box sx={{ my: 4 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            {progress
-              ? `ラウンド ${progress.currentRound} / ${progress.totalRounds} 生成中 - 評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
-              : '生成を準備中...'}
+      <AppBar position="static" sx={{ borderRadius: 0 }}>
+        <Toolbar variant="dense">
+          <Typography variant="h6" component="h1" sx={{ fontWeight: "bold" }}>
+            ダブルスガチャ
           </Typography>
-          <LinearProgress
-            variant={progress ? 'determinate' : 'indeterminate'}
-            value={progress?.percentage || 0}
-          />
-        </Box>
-      )}
+        </Toolbar>
+      </AppBar>
 
-      {/* エラー状態 */}
-      {error && (
-        <Typography color="error" sx={{ my: 2 }}>
-          エラー: {error}
-        </Typography>
-      )}
+      <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1, sm: 3 } }}>
+        {/* 入力フォーム */}
+        <ScheduleForm
+          onGenerate={handleGenerate}
+          onCancel={cancel}
+          isGenerating={isGenerating}
+          hasSchedule={!isGenerating && !!schedule && !!lastParams}
+          onPlayerChangeClick={() => setPlayerChangeOpen(true)}
+        />
 
-      {/* 結果 */}
-      {displaySchedule && (
-        <>
-          <ScheduleTable
-            schedule={displaySchedule}
-            completedMatches={completedMatches}
-            onToggleComplete={handleToggleComplete}
-          />
-          {!isGenerating && schedule && (
-            <EvaluationDisplay evaluation={schedule.evaluation} />
-          )}
-          {/* 参加者変更ダイアログ */}
-          {!isGenerating && schedule && lastParams && (
-            <PlayerChangePanel
-              open={playerChangeOpen}
-              onClose={() => setPlayerChangeOpen(false)}
-              schedule={schedule}
-              completedRounds={completedMatches}
-              isGenerating={isGenerating}
-              weights={lastParams.weights}
-              onRegenerate={handleRegenerate}
-            />
-          )}
-          {!isGenerating && schedule && (
-            <PlayerStatsTable schedule={schedule} />
-          )}
-        </>
-      )}
-    </Container>
+        {/* 進捗付きローディング状態 */}
+        {isGenerating && (
+          <Box sx={{ my: 4 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              {progress
+                ? `ラウンド ${progress.currentRound} / ${progress.totalRounds} 生成中 - 評価 ${progress.currentEvaluations.toLocaleString()} / ${progress.totalEvaluations.toLocaleString()} (${progress.percentage}% 完了)`
+                : "生成を準備中..."}
+            </Typography>
+            <LinearProgress variant={progress ? "determinate" : "indeterminate"} value={progress?.percentage || 0} />
+          </Box>
+        )}
+
+        {/* エラー状態 */}
+        {error && (
+          <Typography color="error" sx={{ my: 2 }}>
+            エラー: {error}
+          </Typography>
+        )}
+
+        {/* 結果 */}
+        {displaySchedule && (
+          <>
+            <ScheduleTable schedule={displaySchedule} completedMatches={completedMatches} onToggleComplete={handleToggleComplete} />
+            {!isGenerating && schedule && <EvaluationDisplay evaluation={schedule.evaluation} />}
+            {/* 参加者変更ダイアログ */}
+            {!isGenerating && schedule && lastParams && (
+              <PlayerChangePanel
+                open={playerChangeOpen}
+                onClose={() => setPlayerChangeOpen(false)}
+                schedule={schedule}
+                completedRounds={completedMatches}
+                isGenerating={isGenerating}
+                weights={lastParams.weights}
+                onRegenerate={handleRegenerate}
+              />
+            )}
+            {!isGenerating && schedule && <PlayerStatsTable schedule={schedule} />}
+          </>
+        )}
+      </Container>
+    </>
   );
 }
 
