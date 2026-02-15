@@ -90,6 +90,31 @@ export function validateFixedPairs(
 }
 
 /**
+ * 休憩者の組み合わせが固定ペアを分断するかチェックする
+ *
+ * 固定ペアの片方だけが休憩リストに含まれる場合、分断と判定する。
+ * 両方が休憩、または両方がプレイの場合は分断なし。
+ *
+ * @param restingPlayers - 休憩者候補の配列
+ * @param fixedPairs - 固定ペアの配列
+ * @returns 1つ以上の固定ペアが分断される場合 true
+ */
+export function splitsAnyFixedPair(
+  restingPlayers: number[],
+  fixedPairs: FixedPair[]
+): boolean {
+  if (fixedPairs.length === 0) return false;
+
+  const restSet = new Set(restingPlayers);
+  for (const fp of fixedPairs) {
+    if (restSet.has(fp.player1) !== restSet.has(fp.player2)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * 配列が全ての固定ペア制約を満たしているかチェックする
  *
  * 配列内で各固定ペアが同じコートの同じペア位置（[0,1]または[2,3]）に

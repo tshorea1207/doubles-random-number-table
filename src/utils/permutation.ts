@@ -3,7 +3,8 @@
  * C++ STL の next_permutation アルゴリズムに基づく
  */
 
-import type { RestCounts } from '../types/schedule';
+import type { FixedPair, RestCounts } from '../types/schedule';
+import { splitsAnyFixedPair } from './fixedPairs';
 
 /**
  * 部分配列をその場で反転する
@@ -161,6 +162,7 @@ export function* generateCombinations(arr: number[], k: number): Generator<numbe
  * @param restCount - 休憩させる人数
  * @param restCounts - 各プレイヤーの現在の休憩回数
  * @param previousRestingPlayers - 前ラウンドの休憩者（連続休憩回避用、省略可）
+ * @param fixedPairs - 固定ペアの配列（固定ペア分断防止用、省略可）
  * @yields 休憩者候補の配列（昇順ソート済み）
  *
  * @example
@@ -174,7 +176,8 @@ export function* generateRestingCandidates(
   allPlayers: number[],
   restCount: number,
   restCounts: RestCounts,
-  previousRestingPlayers?: number[]
+  previousRestingPlayers?: number[],
+  fixedPairs?: FixedPair[]
 ): Generator<number[]> {
   // 休憩者がいない場合は空配列のみを生成
   if (restCount === 0) {
@@ -215,21 +218,36 @@ export function* generateRestingCandidates(
     }
   }
 
+  const activeFixedPairs = fixedPairs ?? [];
+
+  // 固定ペア分断フィルタ（ハード制約: 常に適用）
+  function* applyFixedPairFilter(source: Generator<number[]>): Generator<number[]> {
+    if (activeFixedPairs.length === 0) {
+      yield* source;
+      return;
+    }
+    for (const combo of source) {
+      if (!splitsAnyFixedPair(combo, activeFixedPairs)) {
+        yield combo;
+      }
+    }
+  }
+
   // 連続休憩回避フィルタリング（2パス方式）
   if (prevRestSet.size > 0) {
-    // Pass 1: 前ラウンド休憩者を含まない候補のみ
+    // Pass 1: 前ラウンド休憩者を含まない候補のみ（固定ペアフィルタ適用済み）
     let yieldedCount = 0;
-    for (const combo of generateBase()) {
+    for (const combo of applyFixedPairFilter(generateBase())) {
       if (!combo.some(p => prevRestSet.has(p))) {
         yield combo;
         yieldedCount++;
       }
     }
-    // Pass 2 (フォールバック): 候補が0件の場合、フィルタなしで全候補を生成
+    // Pass 2 (フォールバック): 候補が0件の場合、連続休憩制約を緩和（固定ペア制約は維持）
     if (yieldedCount === 0) {
-      yield* generateBase();
+      yield* applyFixedPairFilter(generateBase());
     }
   } else {
-    yield* generateBase();
+    yield* applyFixedPairFilter(generateBase());
   }
 }

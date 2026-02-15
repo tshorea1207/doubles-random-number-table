@@ -259,7 +259,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     const playingCount = courtsCount * 4;
     const restCount = allPlayers.length - playingCount;
 
-    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRestingPlayers);
+    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRestingPlayers, fixedPairs);
     const playingPlayers = allPlayers.filter((p) => !restingPlayers.includes(p));
     const sortedResting = restingPlayers.slice().sort((a, b) => a - b);
 

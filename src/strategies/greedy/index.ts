@@ -255,7 +255,7 @@ export class GreedyStrategy implements ScheduleStrategy {
 
     const initialRestCounts = initializeRestCounts(playersCount);
 
-    for (const restingPlayers of generateRestingCandidates([...allPlayers].reverse(), restCount, initialRestCounts)) {
+    for (const restingPlayers of generateRestingCandidates([...allPlayers].reverse(), restCount, initialRestCounts, undefined, fixedPairs)) {
       const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
       const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);
@@ -287,7 +287,7 @@ export class GreedyStrategy implements ScheduleStrategy {
     let bestRestingPlayers: number[] | null = null;
     let bestScore = Infinity;
 
-    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts, previousRestingPlayers)) {
+    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts, previousRestingPlayers, fixedPairs)) {
       const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
       const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);
@@ -342,7 +342,7 @@ export class GreedyStrategy implements ScheduleStrategy {
 
     const BATCH_SIZE = 100;
 
-    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts, previousRestingPlayers)) {
+    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts, previousRestingPlayers, fixedPairs)) {
       const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
       const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);

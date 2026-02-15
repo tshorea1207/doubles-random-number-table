@@ -27,35 +27,98 @@ export function shuffle<T>(arr: T[]): T[] {
  *
  * 休憩回数が最少のプレイヤーから優先的に必要人数を選択する。
  * 同じ休憩回数のプレイヤーが複数いる場合はランダムに選ぶ。
+ * 固定ペアがある場合、ペアをアトミック単位として扱い分断を防止する。
  *
  * @param allPlayers - 全プレイヤー番号
  * @param restCount - 休憩させる人数
  * @param restCounts - 各プレイヤーの現在の休憩回数（0-based index）
  * @param previousRestingPlayers - 前ラウンドの休憩者（連続休憩回避用、省略可）
+ * @param fixedPairs - 固定ペアの配列（固定ペア分断防止用、省略可）
  * @returns 休憩者のプレイヤー番号配列（昇順）
  */
 export function selectRestingPlayers(
   allPlayers: number[],
   restCount: number,
   restCounts: number[],
-  previousRestingPlayers?: number[]
+  previousRestingPlayers?: number[],
+  fixedPairs?: FixedPair[]
 ): number[] {
   if (restCount === 0) return [];
 
   const prevRestSet = new Set(previousRestingPlayers ?? []);
+  const activeFixedPairs = (fixedPairs ?? []).filter(
+    fp => allPlayers.includes(fp.player1) && allPlayers.includes(fp.player2)
+  );
 
-  // プレイヤーを休憩回数でソートし、同じ回数内では前ラウンド休憩者を後方に配置
-  const sorted = [...allPlayers].sort((a, b) => {
-    const diff = restCounts[a - 1] - restCounts[b - 1];
-    if (diff !== 0) return diff;
-    // 同一休憩回数内: 前ラウンド休憩者を後方に
-    const aPrev = prevRestSet.has(a) ? 1 : 0;
-    const bPrev = prevRestSet.has(b) ? 1 : 0;
-    if (aPrev !== bPrev) return aPrev - bPrev;
-    return Math.random() - 0.5;
-  });
+  // 固定ペアなし: 既存ロジック
+  if (activeFixedPairs.length === 0) {
+    const sorted = [...allPlayers].sort((a, b) => {
+      const diff = restCounts[a - 1] - restCounts[b - 1];
+      if (diff !== 0) return diff;
+      const aPrev = prevRestSet.has(a) ? 1 : 0;
+      const bPrev = prevRestSet.has(b) ? 1 : 0;
+      if (aPrev !== bPrev) return aPrev - bPrev;
+      return Math.random() - 0.5;
+    });
+    return sorted.slice(0, restCount).sort((a, b) => a - b);
+  }
 
-  return sorted.slice(0, restCount).sort((a, b) => a - b);
+  // 固定ペアあり: アトミック単位（ペア=2枠、ソロ=1枠）で選択
+  const fixedPairMembers = new Set<number>();
+  for (const fp of activeFixedPairs) {
+    fixedPairMembers.add(fp.player1);
+    fixedPairMembers.add(fp.player2);
+  }
+  const soloPlayers = allPlayers.filter(p => !fixedPairMembers.has(p));
+
+  // 各単位のスコアを計算（低い = 休憩優先）
+  type RestUnit = { players: number[]; score: number };
+  const units: RestUnit[] = [];
+
+  for (const fp of activeFixedPairs) {
+    const combinedRest = restCounts[fp.player1 - 1] + restCounts[fp.player2 - 1];
+    const prevPenalty = (prevRestSet.has(fp.player1) || prevRestSet.has(fp.player2)) ? 1000 : 0;
+    units.push({
+      players: [fp.player1, fp.player2],
+      score: combinedRest + prevPenalty + Math.random() * 0.1,
+    });
+  }
+
+  for (const p of soloPlayers) {
+    const prevPenalty = prevRestSet.has(p) ? 1000 : 0;
+    units.push({
+      players: [p],
+      // ソロは1人分なのでペアと比較可能にするため2倍
+      score: restCounts[p - 1] * 2 + prevPenalty + Math.random() * 0.1,
+    });
+  }
+
+  units.sort((a, b) => a.score - b.score);
+
+  // 貪欲法で restCount 枠を埋める
+  const selected: number[] = [];
+  for (const unit of units) {
+    if (selected.length + unit.players.length <= restCount) {
+      selected.push(...unit.players);
+    }
+    if (selected.length === restCount) break;
+  }
+
+  // restCount を満たせない場合（例: 全員が固定ペア & 奇数restCount）
+  // → 固定ペア制約を無視してフォールバック
+  if (selected.length < restCount) {
+    const sorted = [...allPlayers].sort((a, b) => {
+      const diff = restCounts[a - 1] - restCounts[b - 1];
+      if (diff !== 0) return diff;
+      const aPrev = prevRestSet.has(a) ? 1 : 0;
+      const bPrev = prevRestSet.has(b) ? 1 : 0;
+      if (aPrev !== bPrev) return aPrev - bPrev;
+      return Math.random() - 0.5;
+    });
+    return sorted.slice(0, restCount).sort((a, b) => a - b);
+  }
+
+  return selected.sort((a, b) => a - b);
 }
 
 /**
