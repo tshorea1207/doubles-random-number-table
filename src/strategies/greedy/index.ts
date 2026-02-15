@@ -166,8 +166,17 @@ export class GreedyStrategy implements ScheduleStrategy {
       completedRounds, activePlayers, maxPlayerNumber
     );
 
-    const startRound = completedRounds.length + 1;
     const totalRounds = completedRounds.length + remainingRoundsCount;
+
+    // 消化済みラウンドが使用しているroundNumberを除外した空き番号リストを生成
+    const usedRoundNumbers = new Set(completedRounds.map(r => r.roundNumber));
+    const freeRoundNumbers: number[] = [];
+    for (let n = 1; n <= totalRounds; n++) {
+      if (!usedRoundNumbers.has(n)) {
+        freeRoundNumbers.push(n);
+      }
+    }
+
     const normalizedCount = estimateNormalizedCount(activePlayers.length, courtsCount);
     const totalEvaluations = normalizedCount * remainingRoundsCount;
     let currentEvaluations = 0;
@@ -176,12 +185,12 @@ export class GreedyStrategy implements ScheduleStrategy {
       currentEvaluations: 0,
       totalEvaluations,
       percentage: 0,
-      currentRound: startRound,
+      currentRound: freeRoundNumbers[0],
       totalRounds,
     });
 
     for (let i = 0; i < remainingRoundsCount; i++) {
-      const roundNumber = startRound + i;
+      const roundNumber = freeRoundNumbers[i];
 
       await new Promise(resolve => setTimeout(resolve, 0));
       if (signal?.aborted) {
@@ -219,6 +228,9 @@ export class GreedyStrategy implements ScheduleStrategy {
     }
 
     const evaluation = evaluateFromState(cumulativeState, weights);
+
+    // 消化済みラウンドと新規ラウンドをroundNumber順にソート
+    allRounds.sort((a, b) => a.roundNumber - b.roundNumber);
 
     callbacks.onProgress({
       currentEvaluations: totalEvaluations,
