@@ -485,6 +485,69 @@ export function evaluateCandidate(
 }
 
 /**
+ * 前ラウンドから各プレイヤーの対戦相手を抽出する
+ *
+ * 連続対戦回避のために使用。各プレイヤーが前ラウンドで対戦した相手の集合を返す。
+ *
+ * @param round - 前ラウンド
+ * @returns プレイヤー番号 → 対戦相手番号の集合
+ *
+ * 計算量: O(courts)
+ */
+export function extractPreviousOpponents(round: Round): Map<number, Set<number>> {
+  const map = new Map<number, Set<number>>();
+  for (const match of round.matches) {
+    const playersA = [match.pairA.player1, match.pairA.player2];
+    const playersB = [match.pairB.player1, match.pairB.player2];
+    for (const pa of playersA) {
+      if (!map.has(pa)) map.set(pa, new Set());
+      for (const pb of playersB) map.get(pa)!.add(pb);
+    }
+    for (const pb of playersB) {
+      if (!map.has(pb)) map.set(pb, new Set());
+      for (const pa of playersA) map.get(pb)!.add(pa);
+    }
+  }
+  return map;
+}
+
+/**
+ * 候補配置の連続対戦ペナルティを計算する
+ *
+ * テンプレートの各コートについて、前ラウンドと同じ対戦ペアの数をカウントし、
+ * ペナルティ定数を掛けて返す。
+ *
+ * @param template - 0-basedインデックスの正規化済み配置テンプレート
+ * @param courtsCount - コート数
+ * @param playerMap - テンプレートインデックスを実プレイヤー番号に変換する配列
+ * @param previousOpponents - 前ラウンドの対戦相手マップ
+ * @returns ペナルティスコア
+ *
+ * 計算量: O(courts)
+ */
+export function calculateConsecutiveOpponentPenalty(
+  template: number[],
+  courtsCount: number,
+  playerMap: number[],
+  previousOpponents: Map<number, Set<number>>,
+): number {
+  const CONSECUTIVE_OPPONENT_PENALTY = 100;
+  let consecutiveCount = 0;
+  for (let c = 0; c < courtsCount; c++) {
+    const offset = c * 4;
+    const p1 = playerMap[template[offset]];
+    const p2 = playerMap[template[offset + 1]];
+    const p3 = playerMap[template[offset + 2]];
+    const p4 = playerMap[template[offset + 3]];
+    if (previousOpponents.get(p1)?.has(p3)) consecutiveCount++;
+    if (previousOpponents.get(p1)?.has(p4)) consecutiveCount++;
+    if (previousOpponents.get(p2)?.has(p3)) consecutiveCount++;
+    if (previousOpponents.get(p2)?.has(p4)) consecutiveCount++;
+  }
+  return consecutiveCount * CONSECUTIVE_OPPONENT_PENALTY;
+}
+
+/**
  * 累積状態から Evaluation オブジェクトを計算する
  *
  * @param state - 現在の累積状態

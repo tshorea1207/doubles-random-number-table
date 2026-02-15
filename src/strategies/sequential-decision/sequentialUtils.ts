@@ -258,20 +258,43 @@ export function tryAssignCourtWithBacktrackingFixedPairs(
 // === Phase 2: スコアリングベースのフォールバック（常に成功） ===
 
 /**
+ * 連続対戦ペナルティを計算するヘルパー
+ */
+function consecutiveOpponentPenalty(
+  player: number,
+  opponents: number[],
+  previousOpponents?: Map<number, Set<number>>,
+): number {
+  if (!previousOpponents) return 0;
+  const PENALTY = 100;
+  let penalty = 0;
+  const prevSet = previousOpponents.get(player);
+  if (prevSet) {
+    for (const opp of opponents) {
+      if (prevSet.has(opp)) penalty += PENALTY;
+    }
+  }
+  return penalty;
+}
+
+/**
  * 1コートの4人をスコアリングで割り当てる（常に成功）
  *
  * ハード制約の代わりに、履歴カウントが最小のプレイヤーを優先的に選択する。
  * 制約が充足不可能な状況でも必ず結果を返す。
+ * 連続対戦にはペナルティを加算して回避する。
  *
  * @param available - 利用可能なプレイヤー番号（この関数内で変更される）
  * @param pairHistory - ペア履歴行列
  * @param opponentHistory - 対戦履歴行列
+ * @param previousOpponents - 前ラウンドの対戦相手マップ（連続対戦回避用）
  * @returns [p1, p2, p3, p4]（常に成功）
  */
 export function assignCourtWithScoring(
   available: number[],
   pairHistory: CountMatrix,
   opponentHistory: CountMatrix,
+  previousOpponents?: Map<number, Set<number>>,
 ): [number, number, number, number] {
   const p1 = randomPick(available);
   removeFromAvailable(available, p1);
@@ -281,11 +304,13 @@ export function assignCourtWithScoring(
 
   const p3 = pickMinScore(available, p =>
     opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1]
+    + consecutiveOpponentPenalty(p, [p1, p2], previousOpponents)
   );
   removeFromAvailable(available, p3);
 
   const p4 = pickMinScore(available, p =>
     opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1] + pairHistory[p3 - 1][p - 1]
+    + consecutiveOpponentPenalty(p, [p1, p2], previousOpponents)
   );
   removeFromAvailable(available, p4);
 
@@ -300,6 +325,7 @@ export function assignCourtWithScoringFixedPairs(
   pairHistory: CountMatrix,
   opponentHistory: CountMatrix,
   fixedPairs: FixedPair[],
+  previousOpponents?: Map<number, Set<number>>,
 ): [number, number, number, number] {
   const availableSet = new Set(available);
   const applicableFixed = fixedPairs.filter(
@@ -315,18 +341,20 @@ export function assignCourtWithScoringFixedPairs(
 
     const p3 = pickMinScore(available, p =>
       opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1]
+      + consecutiveOpponentPenalty(p, [p1, p2], previousOpponents)
     );
     removeFromAvailable(available, p3);
 
     const p4 = pickMinScore(available, p =>
       opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1] + pairHistory[p3 - 1][p - 1]
+      + consecutiveOpponentPenalty(p, [p1, p2], previousOpponents)
     );
     removeFromAvailable(available, p4);
 
     return [p1, p2, p3, p4];
   }
 
-  return assignCourtWithScoring(available, pairHistory, opponentHistory);
+  return assignCourtWithScoring(available, pairHistory, opponentHistory, previousOpponents);
 }
 
 /**

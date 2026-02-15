@@ -20,6 +20,7 @@ import {
   commitRoundToState,
   evaluateFromState,
   buildCumulativeStateForActivePlayers,
+  extractPreviousOpponents,
 } from "../../utils/evaluation";
 import {
   shuffle,
@@ -63,8 +64,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
 
     // ラウンド2以降: ランダム逐次決定
     for (let r = 2; r <= roundsCount; r++) {
-      const previousRestingPlayers = rounds[rounds.length - 1].restingPlayers;
-      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRestingPlayers);
+      const previousRound = rounds[rounds.length - 1];
+      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRound);
       rounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -123,8 +124,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
         throw new DOMException("Generation cancelled", "AbortError");
       }
 
-      const previousRestingPlayers = rounds[rounds.length - 1].restingPlayers;
-      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRestingPlayers);
+      const previousRound = rounds[rounds.length - 1];
+      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRound);
       rounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -204,8 +205,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
         throw new DOMException("Generation cancelled", "AbortError");
       }
 
-      const previousRestingPlayers = allRounds[allRounds.length - 1].restingPlayers;
-      const round = this.generateRound(roundNumber, activePlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRestingPlayers);
+      const previousRound = allRounds[allRounds.length - 1];
+      const round = this.generateRound(roundNumber, activePlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRound);
       allRounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -265,12 +266,13 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     opponentHistory: CountMatrix,
     restCounts: number[],
     fixedPairs: FixedPair[],
-    previousRestingPlayers: number[],
+    previousRound: Round,
   ): Round {
     const playingCount = courtsCount * 4;
     const restCount = allPlayers.length - playingCount;
+    const previousOpponents = extractPreviousOpponents(previousRound);
 
-    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRestingPlayers, fixedPairs);
+    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRound.restingPlayers, fixedPairs);
     const playingPlayers = allPlayers.filter((p) => !restingPlayers.includes(p));
     const sortedResting = restingPlayers.slice().sort((a, b) => a - b);
 
@@ -310,13 +312,13 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
 
       for (let k = 0; k < courtsCount; k++) {
         const result = hasFixedPairs
-          ? assignCourtWithScoringFixedPairs(available, pairHistory, opponentHistory, fixedPairs)
-          : assignCourtWithScoring(available, pairHistory, opponentHistory);
+          ? assignCourtWithScoringFixedPairs(available, pairHistory, opponentHistory, fixedPairs, previousOpponents)
+          : assignCourtWithScoring(available, pairHistory, opponentHistory, previousOpponents);
         courtAssignments.push(result);
       }
 
       const matches: Match[] = buildNormalizedMatches(courtAssignments);
-      const score = this.quickEvaluate(courtAssignments, pairHistory, opponentHistory);
+      const score = this.quickEvaluate(courtAssignments, pairHistory, opponentHistory, previousOpponents);
       if (score < bestScore) {
         bestScore = score;
         bestMatches = matches;
@@ -332,14 +334,17 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
    * 候補の割り当てに対して、既存の履歴カウントの合計を返す。
    * pairMax（ペア回数最大値）を辞書式順序で最優先し、
    * 同じ pairMax 内でカウント合計を比較する。
+   * 連続対戦にはペナルティを加算する。
    */
   private quickEvaluate(
     courtAssignments: [number, number, number, number][],
     pairHistory: CountMatrix,
     opponentHistory: CountMatrix,
+    previousOpponents: Map<number, Set<number>>,
   ): number {
     let score = 0;
     let pairMax = 0;
+    const CONSECUTIVE_OPPONENT_PENALTY = 100;
     for (const [p1, p2, p3, p4] of courtAssignments) {
       const newPair1 = pairHistory[p1 - 1][p2 - 1] + 1;
       const newPair2 = pairHistory[p3 - 1][p4 - 1] + 1;
@@ -352,6 +357,12 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       score += opponentHistory[p1 - 1][p4 - 1];
       score += opponentHistory[p2 - 1][p3 - 1];
       score += opponentHistory[p2 - 1][p4 - 1];
+
+      // 連続対戦ペナルティ
+      if (previousOpponents.get(p1)?.has(p3)) score += CONSECUTIVE_OPPONENT_PENALTY;
+      if (previousOpponents.get(p1)?.has(p4)) score += CONSECUTIVE_OPPONENT_PENALTY;
+      if (previousOpponents.get(p2)?.has(p3)) score += CONSECUTIVE_OPPONENT_PENALTY;
+      if (previousOpponents.get(p2)?.has(p4)) score += CONSECUTIVE_OPPONENT_PENALTY;
     }
     const PAIR_MAX_PENALTY = 1000;
     return pairMax * PAIR_MAX_PENALTY + score;
