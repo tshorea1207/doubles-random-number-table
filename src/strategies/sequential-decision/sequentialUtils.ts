@@ -31,19 +31,27 @@ export function shuffle<T>(arr: T[]): T[] {
  * @param allPlayers - 全プレイヤー番号
  * @param restCount - 休憩させる人数
  * @param restCounts - 各プレイヤーの現在の休憩回数（0-based index）
+ * @param previousRestingPlayers - 前ラウンドの休憩者（連続休憩回避用、省略可）
  * @returns 休憩者のプレイヤー番号配列（昇順）
  */
 export function selectRestingPlayers(
   allPlayers: number[],
   restCount: number,
-  restCounts: number[]
+  restCounts: number[],
+  previousRestingPlayers?: number[]
 ): number[] {
   if (restCount === 0) return [];
 
-  // プレイヤーを休憩回数でソートし、同じ回数内はシャッフル
+  const prevRestSet = new Set(previousRestingPlayers ?? []);
+
+  // プレイヤーを休憩回数でソートし、同じ回数内では前ラウンド休憩者を後方に配置
   const sorted = [...allPlayers].sort((a, b) => {
     const diff = restCounts[a - 1] - restCounts[b - 1];
     if (diff !== 0) return diff;
+    // 同一休憩回数内: 前ラウンド休憩者を後方に
+    const aPrev = prevRestSet.has(a) ? 1 : 0;
+    const bPrev = prevRestSet.has(b) ? 1 : 0;
+    if (aPrev !== bPrev) return aPrev - bPrev;
     return Math.random() - 0.5;
   });
 

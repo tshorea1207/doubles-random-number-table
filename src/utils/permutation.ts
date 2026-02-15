@@ -160,6 +160,7 @@ export function* generateCombinations(arr: number[], k: number): Generator<numbe
  * @param allPlayers - 全プレイヤー番号の配列
  * @param restCount - 休憩させる人数
  * @param restCounts - 各プレイヤーの現在の休憩回数
+ * @param previousRestingPlayers - 前ラウンドの休憩者（連続休憩回避用、省略可）
  * @yields 休憩者候補の配列（昇順ソート済み）
  *
  * @example
@@ -172,7 +173,8 @@ export function* generateCombinations(arr: number[], k: number): Generator<numbe
 export function* generateRestingCandidates(
   allPlayers: number[],
   restCount: number,
-  restCounts: RestCounts
+  restCounts: RestCounts,
+  previousRestingPlayers?: number[]
 ): Generator<number[]> {
   // 休憩者がいない場合は空配列のみを生成
   if (restCount === 0) {
@@ -180,31 +182,54 @@ export function* generateRestingCandidates(
     return;
   }
 
-  // allPlayers のプレイヤーのみの休憩回数を参照（非連続プレイヤー番号対応）
-  const activeRestValues = allPlayers.map(p => restCounts[p - 1]);
-  const minRest = Math.min(...activeRestValues);
-  const maxRest = Math.max(...activeRestValues);
-  const diff = maxRest - minRest;
+  const prevRestSet = new Set(previousRestingPlayers ?? []);
 
-  if (diff >= 2) {
-    // ハイブリッド: 休憩回数が少ない人から優先的に休憩
-    // maxRestのプレイヤーは除外（必ずプレイ）
-    const mustRest = allPlayers.filter(p => restCounts[p - 1] === minRest);
-    const canRest = allPlayers.filter(p => restCounts[p - 1] < maxRest);
+  // 基本候補生成（既存のハイブリッド/全探索ロジック）
+  function* generateBase(): Generator<number[]> {
+    // allPlayers のプレイヤーのみの休憩回数を参照（非連続プレイヤー番号対応）
+    const activeRestValues = allPlayers.map(p => restCounts[p - 1]);
+    const minRest = Math.min(...activeRestValues);
+    const maxRest = Math.max(...activeRestValues);
+    const diff = maxRest - minRest;
 
-    // mustRestからrestCount人を選択できる場合
-    if (mustRest.length >= restCount) {
-      yield* generateCombinations(mustRest, restCount);
+    if (diff >= 2) {
+      // ハイブリッド: 休憩回数が少ない人から優先的に休憩
+      // maxRestのプレイヤーは除外（必ずプレイ）
+      const mustRest = allPlayers.filter(p => restCounts[p - 1] === minRest);
+      const canRest = allPlayers.filter(p => restCounts[p - 1] < maxRest);
+
+      // mustRestからrestCount人を選択できる場合
+      if (mustRest.length >= restCount) {
+        yield* generateCombinations(mustRest, restCount);
+      } else {
+        // mustRestだけでは足りない場合、canRestから補充
+        const remaining = restCount - mustRest.length;
+        const others = canRest.filter(p => !mustRest.includes(p));
+        for (const extra of generateCombinations(others, remaining)) {
+          yield [...mustRest, ...extra].sort((a, b) => a - b);
+        }
+      }
     } else {
-      // mustRestだけでは足りない場合、canRestから補充
-      const remaining = restCount - mustRest.length;
-      const others = canRest.filter(p => !mustRest.includes(p));
-      for (const extra of generateCombinations(others, remaining)) {
-        yield [...mustRest, ...extra].sort((a, b) => a - b);
+      // 全探索: 全プレイヤーからrestCount人を選択
+      yield* generateCombinations(allPlayers, restCount);
+    }
+  }
+
+  // 連続休憩回避フィルタリング（2パス方式）
+  if (prevRestSet.size > 0) {
+    // Pass 1: 前ラウンド休憩者を含まない候補のみ
+    let yieldedCount = 0;
+    for (const combo of generateBase()) {
+      if (!combo.some(p => prevRestSet.has(p))) {
+        yield combo;
+        yieldedCount++;
       }
     }
+    // Pass 2 (フォールバック): 候補が0件の場合、フィルタなしで全候補を生成
+    if (yieldedCount === 0) {
+      yield* generateBase();
+    }
   } else {
-    // 全探索: 全プレイヤーからrestCount人を選択
-    yield* generateCombinations(allPlayers, restCount);
+    yield* generateBase();
   }
 }

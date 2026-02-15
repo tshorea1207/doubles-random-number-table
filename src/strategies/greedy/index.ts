@@ -46,7 +46,8 @@ export class GreedyStrategy implements ScheduleStrategy {
     commitRoundToState(cumulativeState, firstRound);
 
     for (let r = 2; r <= roundsCount; r++) {
-      const bestRound = this.findBestNextRound(cumulativeState, r, allPlayers, courtsCount, weights, fixedPairs);
+      const previousRestingPlayers = rounds[rounds.length - 1].restingPlayers;
+      const bestRound = this.findBestNextRound(cumulativeState, r, allPlayers, courtsCount, weights, fixedPairs, previousRestingPlayers);
       rounds.push(bestRound);
       commitRoundToState(cumulativeState, bestRound);
     }
@@ -97,6 +98,7 @@ export class GreedyStrategy implements ScheduleStrategy {
         throw new DOMException('Generation cancelled', 'AbortError');
       }
 
+      const previousRestingPlayers = rounds[rounds.length - 1].restingPlayers;
       const bestRound = await this.findBestNextRoundAsync(
         cumulativeState,
         r,
@@ -104,6 +106,7 @@ export class GreedyStrategy implements ScheduleStrategy {
         courtsCount,
         weights,
         fixedPairs,
+        previousRestingPlayers,
         (roundEvaluations: number) => {
           const prevRoundEvaluations = normalizedCount * (r - 2);
           currentEvaluations = prevRoundEvaluations + roundEvaluations;
@@ -185,6 +188,7 @@ export class GreedyStrategy implements ScheduleStrategy {
         throw new DOMException('Generation cancelled', 'AbortError');
       }
 
+      const previousRestingPlayers = allRounds[allRounds.length - 1].restingPlayers;
       const bestRound = await this.findBestNextRoundAsync(
         cumulativeState,
         roundNumber,
@@ -192,6 +196,7 @@ export class GreedyStrategy implements ScheduleStrategy {
         courtsCount,
         weights,
         fixedPairs,
+        previousRestingPlayers,
         (roundEvaluations: number) => {
           const prevEvals = normalizedCount * i;
           currentEvaluations = prevEvals + roundEvaluations;
@@ -271,7 +276,8 @@ export class GreedyStrategy implements ScheduleStrategy {
     allPlayers: number[],
     courtsCount: number,
     weights: { w1: number; w2: number; w3: number },
-    fixedPairs: FixedPair[]
+    fixedPairs: FixedPair[],
+    previousRestingPlayers: number[]
   ): Round {
     const playingCount = courtsCount * 4;
     const restCount = allPlayers.length - playingCount;
@@ -281,7 +287,7 @@ export class GreedyStrategy implements ScheduleStrategy {
     let bestRestingPlayers: number[] | null = null;
     let bestScore = Infinity;
 
-    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts)) {
+    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts, previousRestingPlayers)) {
       const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
       const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);
@@ -321,6 +327,7 @@ export class GreedyStrategy implements ScheduleStrategy {
     courtsCount: number,
     weights: { w1: number; w2: number; w3: number },
     fixedPairs: FixedPair[],
+    previousRestingPlayers: number[],
     onProgress: (evaluationCount: number) => void,
     signal?: AbortSignal
   ): Promise<Round> {
@@ -335,7 +342,7 @@ export class GreedyStrategy implements ScheduleStrategy {
 
     const BATCH_SIZE = 100;
 
-    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts)) {
+    for (const restingPlayers of generateRestingCandidates(allPlayers, restCount, cumulativeState.restCounts, previousRestingPlayers)) {
       const playingPlayers = allPlayers.filter(p => !restingPlayers.includes(p)).sort((a, b) => a - b);
 
       const templates = getNormalizedArrangements(courtsCount, playingPlayers.length);

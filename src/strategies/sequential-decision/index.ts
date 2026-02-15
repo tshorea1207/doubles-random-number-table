@@ -63,7 +63,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
 
     // ラウンド2以降: ランダム逐次決定
     for (let r = 2; r <= roundsCount; r++) {
-      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs);
+      const previousRestingPlayers = rounds[rounds.length - 1].restingPlayers;
+      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRestingPlayers);
       rounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -122,7 +123,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
         throw new DOMException("Generation cancelled", "AbortError");
       }
 
-      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs);
+      const previousRestingPlayers = rounds[rounds.length - 1].restingPlayers;
+      const round = this.generateRound(r, allPlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRestingPlayers);
       rounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -194,7 +196,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
         throw new DOMException("Generation cancelled", "AbortError");
       }
 
-      const round = this.generateRound(roundNumber, activePlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs);
+      const previousRestingPlayers = allRounds[allRounds.length - 1].restingPlayers;
+      const round = this.generateRound(roundNumber, activePlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRestingPlayers);
       allRounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -251,11 +254,12 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     opponentHistory: CountMatrix,
     restCounts: number[],
     fixedPairs: FixedPair[],
+    previousRestingPlayers: number[],
   ): Round {
     const playingCount = courtsCount * 4;
     const restCount = allPlayers.length - playingCount;
 
-    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts);
+    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRestingPlayers);
     const playingPlayers = allPlayers.filter((p) => !restingPlayers.includes(p));
     const sortedResting = restingPlayers.slice().sort((a, b) => a - b);
 
