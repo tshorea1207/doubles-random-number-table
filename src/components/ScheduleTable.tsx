@@ -85,7 +85,21 @@ function formatTime(date: Date): string {
 export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound, openedAt, onRoundOpened, speechPitch, speechRate }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
   const [completedExpanded, setCompletedExpanded] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const { speak, stop, isSpeaking } = useSpeech(speechPitch, speechRate);
+
+  // ダイアログ表示中のみ30秒ごとに現在時刻を更新
+  useEffect(() => {
+    if (!selectedRound) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, [selectedRound]);
+
+  const isOverdue =
+    selectedRound != null &&
+    openedAt[`${selectedRound.roundNumber}`] != null &&
+    now - openedAt[`${selectedRound.roundNumber}`].getTime() > 3 * 60 * 1000;
 
   // ダイアログが閉じたら読み上げを停止
   useEffect(() => {
@@ -423,7 +437,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
         onClose={handleDialogClose}
         maxWidth="sm"
         fullWidth
-        slotProps={{ paper: { sx: { mx: { xs: 1, sm: 4 } } } }}
+        slotProps={{ paper: { sx: { mx: { xs: 1, sm: 4 }, ...(isOverdue && { bgcolor: scheduleColors.dialogOverdue }) } } }}
       >
         {selectedRound && (
           <>
