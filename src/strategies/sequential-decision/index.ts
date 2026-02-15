@@ -31,8 +31,8 @@ import {
   buildNormalizedMatches,
 } from "./sequentialUtils";
 
-const MAX_RETRY_HARD = 50;
-const MAX_RETRY_SOFT = 50;
+const MAX_RETRY_HARD = 100;
+const MAX_RETRY_SOFT = 100;
 
 export class SequentialDecisionStrategy implements ScheduleStrategy {
   readonly meta: StrategyMeta = {
