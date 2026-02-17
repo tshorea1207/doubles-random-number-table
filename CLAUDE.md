@@ -27,17 +27,19 @@ React + Vite + MUI で構築する。
 組み合わせの良さを以下の評価値で判定する（値が小さいほど良い）：
 
 ```
-ev = ev_pair_counts * W1 + ev_oppo_counts * W2
+totalScore = pairStdDev * w1 + oppoStdDev * w2 + restStdDev * w3
 ```
 
-| 評価項目 | 説明 | 計算方法 |
-|---------|------|---------|
-| `ev_pair_counts` | ペア回数の偏り | `pair_counts[p1][p2]` の標準偏差 |
-| `ev_oppo_counts` | 対戦回数の偏り | `oppo_counts[p1][p2]` の標準偏差 |
-| `W1`, `W2` | 重み係数 | W1 > W2 > 0（ペアの公平性を優先） |
+| 評価項目         | 説明           | 計算方法                         |
+| ---------------- | -------------- | -------------------------------- |
+| `pairStdDev`     | ペア回数の偏り | `pair_counts[p1][p2]` の標準偏差 |
+| `oppoStdDev`     | 対戦回数の偏り | `oppo_counts[p1][p2]` の標準偏差 |
+| `restStdDev`     | 休憩回数の偏り | `rest_counts[p]` の標準偏差      |
+| `w1`, `w2`, `w3` | 重み係数       | w1: ペア、w2: 対戦、w3: 休憩     |
 
 - `pair_counts[p1][p2]`: プレイヤーp1とp2がペアを組んだ回数
 - `oppo_counts[p1][p2]`: プレイヤーp1とp2が対戦した回数
+- `rest_counts[p]`: プレイヤーpが休憩した回数
 
 ### 組み合わせの正規化
 
@@ -49,50 +51,22 @@ ev = ev_pair_counts * W1 + ev_oppo_counts * W2
 
 **効果**: 2面8人の場合、40,320通り → 315通りに削減
 
-### 貪欲法に基づく逐次構築法
+### 逐次決定法（Sequential Decision Method）
 
-全探索は計算量的に不可能（7ラウンドで約3×10^17通り）なため、以下の手法を採用：
+全探索は計算量的に不可能なため、ランダム選択と制約チェックによる高速な2フェーズ手法を採用：
 
 1. **第1ラウンド固定**: 正規化に基づき一意に決定
    - 例（2面8人）: `(1,2 : 3,4) (5,6 : 7,8)`
 
-2. **逐次的ラウンド最適化**:
-   - 各ラウンドで可能な全組み合わせ（315通り）を評価
-   - 累積の目的関数が最小となる組み合わせを選択
-   - 次のラウンドへ進む
+2. **Phase 1: ハード制約 + バックトラック**（最大100リトライ）:
+   - プレイヤーをランダムにシャッフルし、コートごとに4人ずつ割り当て
+   - 未ペア・未対戦の制約を満たせない場合はラウンド全体をリトライ
 
-3. **計算量**: `315通り × (R-1)ラウンド` = 2面8人7ラウンドで約1,890回の評価
+3. **Phase 2: スコアリングフォールバック**（Phase 1 が失敗した場合、最大100リトライ）:
+   - ランダムシャッフルの各試行でペア回数・対戦回数・連続対戦ペナルティを算出
+   - 最良スコアの組み合わせを採用（常に成功）
 
-### next_permutation アルゴリズム
-
-```typescript
-function nextPermutation(arr: number[]): boolean {
-  // 1. 右から a[k] < a[k+1] となる最大のk を探す
-  let k = arr.length - 2;
-  while (k >= 0 && arr[k] >= arr[k + 1]) {
-    k--;
-  }
-  
-  // 2. kが見つからない場合は最後の順列
-  if (k < 0) {
-    arr.reverse();
-    return false;
-  }
-  
-  // 3. 右から a[k] < a[l] となる最大のl を探す
-  let l = arr.length - 1;
-  while (arr[k] >= arr[l]) {
-    l--;
-  }
-  
-  // 4. a[k] と a[l] を交換
-  [arr[k], arr[l]] = [arr[l], arr[k]];
-  
-  // 5. k+1 以降を反転
-  reverseSubarray(arr, k + 1, arr.length - 1);
-  return true;
-}
-```
+4. **計算量**: O(R × C × N) — 高速に動作
 
 ---
 
@@ -103,20 +77,29 @@ function nextPermutation(arr: number[]): boolean {
 ```typescript
 // ペア（2人のプレイヤー）
 interface Pair {
-  player1: number;  // 常に player1 < player2
+  player1: number; // 常に player1 < player2
   player2: number;
 }
 
 // 1コートの対戦（2ペア）
 interface Match {
-  pairA: Pair;  // 常に min(pairA) < min(pairB)
+  pairA: Pair; // 常に min(pairA) < min(pairB)
   pairB: Pair;
 }
 
 // 1ラウンドの全コート
 interface Round {
   roundNumber: number;
-  matches: Match[];  // コート番号順（最小プレイヤー番号でソート済み）
+  matches: Match[]; // コートごとに1試合
+  restingPlayers: number[]; // このラウンドで休憩するプレイヤー番号（昇順）
+}
+
+// スケジュールの評価指標
+interface Evaluation {
+  pairStdDev: number; // ペア回数の標準偏差
+  oppoStdDev: number; // 対戦回数の標準偏差
+  restStdDev: number; // 休憩回数の標準偏差
+  totalScore: number; // 重み付き合計: pairStdDev * w1 + oppoStdDev * w2 + restStdDev * w3
 }
 
 // 対戦表全体
@@ -124,11 +107,9 @@ interface Schedule {
   courts: number;
   players: number;
   rounds: Round[];
-  evaluation: {
-    pairStdDev: number;
-    oppoStdDev: number;
-    totalScore: number;
-  };
+  evaluation: Evaluation;
+  fixedPairs: FixedPair[]; // 固定ペアのリスト
+  activePlayers: number[]; // 現在アクティブなプレイヤー番号（ソート済み）
 }
 
 // カウント行列
@@ -166,7 +147,7 @@ src/
 ### 正規化チェック
 
 ```typescript
-function isNormalized(arrangement: number[], courtsCount: number): boolean
+function isNormalized(arrangement: number[], courtsCount: number): boolean;
 ```
 
 - 配列が正規化ルールに従っているかを判定
@@ -181,18 +162,14 @@ function isNormalized(arrangement: number[], courtsCount: number): boolean
 function evaluate(
   rounds: Round[],
   playersCount: number,
-  weights: { w1: number; w2: number }
-): { pairStdDev: number; oppoStdDev: number; totalScore: number }
+  weights: { w1: number; w2: number; w3: number },
+): { pairStdDev: number; oppoStdDev: number; restStdDev: number; totalScore: number };
 ```
 
 ### スケジュール生成
 
 ```typescript
-function generateSchedule(
-  courtsCount: number,
-  playersCount: number,
-  roundsCount: number
-): Schedule
+function generateSchedule(courtsCount: number, playersCount: number, roundsCount: number): Schedule;
 ```
 
 ---
@@ -200,23 +177,28 @@ function generateSchedule(
 ## UI要件
 
 ### 入力フォーム
+
 - コート数: 1-4（デフォルト: 2）
 - 参加人数: 4-16（デフォルト: 8、コート数×4以上）
 - ラウンド数: 1-10（デフォルト: 7）
-- 重み W1, W2: スライダーで調整可能
+- 重み w1, w2, w3: スライダーで調整可能
 
 ### 対戦表表示
+
 - MUI Table を使用
 - ラウンドごとに行、コートごとに列
 - 形式: `1,2 : 3,4`（ペアA : ペアB）
 
 ### 評価情報
+
 - ペア回数の標準偏差
 - 対戦回数の標準偏差
+- 休憩回数の標準偏差
 - 総合評価スコア
-- 理想解（ev=0）かどうかの表示
+- 理想解（totalScore=0）かどうかの表示
 
 ### 統計表示（オプション）
+
 - 各プレイヤーのペア回数行列
 - 各プレイヤーの対戦回数行列
 
@@ -224,12 +206,6 @@ function generateSchedule(
 
 ## 制限事項・注意点
 
-1. **2面コート推奨**: 3面以上は計算時間が大幅に増加
-2. **貪欲法の限界**: 大域最適解を保証しない（局所最適解）
-3. **正規化による重複排除**: 同一組み合わせの重複評価を防止
+1. **逐次決定法の特性**: ランダム性に基づくため実行ごとに結果が異なる。大域最適解を保証しない
 
 ---
-
-## 参考
-
-- [サークルテニス ダブルス組み合わせ最適化 - Qiita](https://qiita.com/vivisuke2025/items/15a5d9af31e59b883482)
