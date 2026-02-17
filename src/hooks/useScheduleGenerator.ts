@@ -17,7 +17,7 @@ export function generateSchedule(params: ScheduleParams): Schedule {
 /**
  * アルゴリズム非依存のスケジュール生成 React フック
  *
- * @param strategyId - 使用するアルゴリズムのID（デフォルト: 'greedy'）
+ * @param strategyId - 使用するアルゴリズムのID（デフォルト: 'sequential-decision'）
  * @returns スケジュール状態、進捗、生成関数を含むフックインターフェース
  *
  * @example

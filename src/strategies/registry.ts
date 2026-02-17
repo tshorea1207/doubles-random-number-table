@@ -5,13 +5,11 @@
  */
 
 import type { ScheduleStrategy, StrategyId, StrategyMeta } from "./types";
-import { GreedyStrategy } from "./greedy";
 import { SequentialDecisionStrategy } from "./sequential-decision";
 
 const strategies: Map<StrategyId, ScheduleStrategy> = new Map();
 
 // ストラテジーを登録
-strategies.set("greedy", new GreedyStrategy());
 strategies.set("sequential-decision", new SequentialDecisionStrategy());
 
 /**

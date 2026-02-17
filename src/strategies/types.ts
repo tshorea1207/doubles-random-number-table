@@ -13,7 +13,7 @@ import type {
 /**
  * アルゴリズム識別子
  */
-export type StrategyId = 'greedy' | 'sequential-decision';
+export type StrategyId = 'sequential-decision';
 
 /**
  * アルゴリズム戦略のメタ情報
