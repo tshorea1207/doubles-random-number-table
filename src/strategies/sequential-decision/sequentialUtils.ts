@@ -204,6 +204,8 @@ export function tryAssignCourtWithBacktracking(
   return null;
 }
 
+// === Phase 1: ペア＋対戦ハード制約バックトラック ===
+
 /**
  * 固定ペアを考慮したDFSバックトラック割り当て（ハード制約）
  *
@@ -253,6 +255,116 @@ export function tryAssignCourtWithBacktrackingFixedPairs(
   }
 
   return tryAssignCourtWithBacktracking(available, pairHistory, opponentHistory);
+}
+
+// === Phase 1.5: 対戦制約のみバックトラック ===
+
+/**
+ * 1コートの4人をDFSバックトラックで割り当てる（対戦制約のみ）
+ *
+ * Phase 1.5: ペア制約を緩和し、対戦のみのハード制約で探索する。
+ * ペア回数の少ない相手をソフト優先する。
+ *
+ * @param available - 利用可能なプレイヤー番号（成功時のみ変更される）
+ * @param pairHistory - ペア履歴行列（ソフト制約として参照）
+ * @param opponentHistory - 対戦履歴行列（ハード制約）
+ * @returns 成功時: [p1, p2, p3, p4]、失敗時: null
+ */
+export function tryAssignCourtOpponentOnly(
+  available: number[],
+  pairHistory: CountMatrix,
+  opponentHistory: CountMatrix,
+): [number, number, number, number] | null {
+  if (available.length < 4) return null;
+
+  const shuffled = shuffle([...available]);
+
+  for (const p1 of shuffled) {
+    // p2: ペア制約なし、ペア回数昇順でソフト優先
+    const p2Candidates = shuffled
+      .filter(p => p !== p1)
+      .sort((a, b) => pairHistory[p1 - 1][a - 1] - pairHistory[p1 - 1][b - 1]);
+
+    for (const p2 of p2Candidates) {
+      const p3Candidates = shuffled.filter(p =>
+        p !== p1 && p !== p2 &&
+        opponentHistory[p1 - 1][p - 1] === 0 &&
+        opponentHistory[p2 - 1][p - 1] === 0
+      );
+
+      for (const p3 of p3Candidates) {
+        const p4Candidates = shuffled.filter(p =>
+          p !== p1 && p !== p2 && p !== p3 &&
+          opponentHistory[p1 - 1][p - 1] === 0 &&
+          opponentHistory[p2 - 1][p - 1] === 0
+        );
+
+        if (p4Candidates.length > 0) {
+          // p4候補の中でp3とのペア回数が最小のものを選択
+          const p4 = p4Candidates.reduce((best, p) =>
+            pairHistory[p3 - 1][p - 1] < pairHistory[p3 - 1][best - 1] ? p : best
+          );
+          removeFromAvailable(available, p1);
+          removeFromAvailable(available, p2);
+          removeFromAvailable(available, p3);
+          removeFromAvailable(available, p4);
+          return [p1, p2, p3, p4];
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+// === Phase 1.5: 対戦制約のみバックトラック ===
+
+/**
+ * 固定ペアを考慮した対戦制約のみバックトラック（Phase 1.5）
+ */
+export function tryAssignCourtOpponentOnlyFixedPairs(
+  available: number[],
+  pairHistory: CountMatrix,
+  opponentHistory: CountMatrix,
+  fixedPairs: FixedPair[],
+): [number, number, number, number] | null {
+  const availableSet = new Set(available);
+  const applicableFixed = fixedPairs.filter(
+    fp => availableSet.has(fp.player1) && availableSet.has(fp.player2)
+  );
+
+  if (applicableFixed.length > 0) {
+    const shuffledFixed = shuffle([...applicableFixed]);
+    for (const fp of shuffledFixed) {
+      const p1 = fp.player1;
+      const p2 = fp.player2;
+      const remaining = shuffle(available.filter(p => p !== p1 && p !== p2));
+
+      for (const p3 of remaining) {
+        if (opponentHistory[p1 - 1][p3 - 1] !== 0 || opponentHistory[p2 - 1][p3 - 1] !== 0) continue;
+
+        const p4Candidates = remaining.filter(p =>
+          p !== p3 &&
+          opponentHistory[p1 - 1][p - 1] === 0 &&
+          opponentHistory[p2 - 1][p - 1] === 0
+        );
+
+        if (p4Candidates.length > 0) {
+          const p4 = p4Candidates.reduce((best, p) =>
+            pairHistory[p3 - 1][p - 1] < pairHistory[p3 - 1][best - 1] ? p : best
+          );
+          removeFromAvailable(available, p1);
+          removeFromAvailable(available, p2);
+          removeFromAvailable(available, p3);
+          removeFromAvailable(available, p4);
+          return [p1, p2, p3, p4];
+        }
+      }
+    }
+    return null;
+  }
+
+  return tryAssignCourtOpponentOnly(available, pairHistory, opponentHistory);
 }
 
 // === Phase 2: スコアリングベースのフォールバック（常に成功） ===

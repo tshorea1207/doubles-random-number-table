@@ -27,13 +27,19 @@ import {
   selectRestingPlayers,
   tryAssignCourtWithBacktracking,
   tryAssignCourtWithBacktrackingFixedPairs,
+  tryAssignCourtOpponentOnly,
+  tryAssignCourtOpponentOnlyFixedPairs,
   assignCourtWithScoring,
   assignCourtWithScoringFixedPairs,
   buildNormalizedMatches,
 } from "./sequentialUtils";
 
-const MAX_RETRY_HARD = 100;
-const MAX_RETRY_SOFT = 100;
+const MAX_RETRY_HARD = 100; // Phase1   ハードペア制約
+const MAX_RETRY_OPPO = 100; // Phase1.5 ハード対戦制約
+const MAX_RETRY_SOFT = 100; // Phase2   ソフト制約
+const PAIR_MAX_PENALTY = 100; // 最大ペア制約
+const OPPO_MAX_PENALTY = 100; // 最大対戦制約
+const CONSECUTIVE_OPPONENT_PENALTY = 100; // 連続対戦ペナルティ
 
 export class SequentialDecisionStrategy implements ScheduleStrategy {
   readonly meta: StrategyMeta = {
@@ -182,7 +188,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     const totalRounds = completedRounds.length + remainingRoundsCount;
 
     // 消化済みラウンドが使用しているroundNumberを除外した空き番号リストを生成
-    const usedRoundNumbers = new Set(completedRounds.map(r => r.roundNumber));
+    const usedRoundNumbers = new Set(completedRounds.map((r) => r.roundNumber));
     const freeRoundNumbers: number[] = [];
     for (let n = 1; n <= totalRounds; n++) {
       if (!usedRoundNumbers.has(n)) {
@@ -206,7 +212,16 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       }
 
       const previousRound = allRounds[allRounds.length - 1];
-      const round = this.generateRound(roundNumber, activePlayers, courtsCount, pairHistory, opponentHistory, restCounts, fixedPairs, previousRound);
+      const round = this.generateRound(
+        roundNumber,
+        activePlayers,
+        courtsCount,
+        pairHistory,
+        opponentHistory,
+        restCounts,
+        fixedPairs,
+        previousRound,
+      );
       allRounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
@@ -302,6 +317,30 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       }
     }
 
+    // === Phase 1.5: 対戦制約のみバックトラック（ペア制約緩和） ===
+    for (let retry = 0; retry < MAX_RETRY_OPPO; retry++) {
+      const available = shuffle([...playingPlayers]);
+      const courtAssignments: [number, number, number, number][] = [];
+      let failed = false;
+
+      for (let k = 0; k < courtsCount; k++) {
+        const result = hasFixedPairs
+          ? tryAssignCourtOpponentOnlyFixedPairs(available, pairHistory, opponentHistory, fixedPairs)
+          : tryAssignCourtOpponentOnly(available, pairHistory, opponentHistory);
+
+        if (result === null) {
+          failed = true;
+          break;
+        }
+        courtAssignments.push(result);
+      }
+
+      if (!failed) {
+        const matches: Match[] = buildNormalizedMatches(courtAssignments);
+        return { roundNumber, matches, restingPlayers: sortedResting };
+      }
+    }
+
     // === Phase 2: スコアリングベースのフォールバック（常に成功） ===
     let bestMatches: Match[] | null = null;
     let bestScore = Infinity;
@@ -332,8 +371,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
    * スコアリングフォールバック用の軽量評価
    *
    * 候補の割り当てに対して、既存の履歴カウントの合計を返す。
-   * pairMax（ペア回数最大値）を辞書式順序で最優先し、
-   * 同じ pairMax 内でカウント合計を比較する。
+   * pairMax（ペア回数最大値）→ oppoMax（対戦回数最大値）→ カウント合計
+   * の3段階辞書式順序で評価する。
    * 連続対戦にはペナルティを加算する。
    */
   private quickEvaluate(
@@ -344,12 +383,22 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
   ): number {
     let score = 0;
     let pairMax = 0;
-    const CONSECUTIVE_OPPONENT_PENALTY = 100;
+    let oppoMax = 0;
     for (const [p1, p2, p3, p4] of courtAssignments) {
       const newPair1 = pairHistory[p1 - 1][p2 - 1] + 1;
       const newPair2 = pairHistory[p3 - 1][p4 - 1] + 1;
       if (newPair1 > pairMax) pairMax = newPair1;
       if (newPair2 > pairMax) pairMax = newPair2;
+
+      // 対戦回数の最大値を追跡
+      const newOppo13 = opponentHistory[p1 - 1][p3 - 1] + 1;
+      const newOppo14 = opponentHistory[p1 - 1][p4 - 1] + 1;
+      const newOppo23 = opponentHistory[p2 - 1][p3 - 1] + 1;
+      const newOppo24 = opponentHistory[p2 - 1][p4 - 1] + 1;
+      if (newOppo13 > oppoMax) oppoMax = newOppo13;
+      if (newOppo14 > oppoMax) oppoMax = newOppo14;
+      if (newOppo23 > oppoMax) oppoMax = newOppo23;
+      if (newOppo24 > oppoMax) oppoMax = newOppo24;
 
       score += pairHistory[p1 - 1][p2 - 1];
       score += pairHistory[p3 - 1][p4 - 1];
@@ -364,7 +413,6 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       if (previousOpponents.get(p2)?.has(p3)) score += CONSECUTIVE_OPPONENT_PENALTY;
       if (previousOpponents.get(p2)?.has(p4)) score += CONSECUTIVE_OPPONENT_PENALTY;
     }
-    const PAIR_MAX_PENALTY = 1000;
-    return pairMax * PAIR_MAX_PENALTY + score;
+    return pairMax * PAIR_MAX_PENALTY + oppoMax * OPPO_MAX_PENALTY + score;
   }
 }
