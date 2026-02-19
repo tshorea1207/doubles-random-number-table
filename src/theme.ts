@@ -75,7 +75,7 @@ export const scheduleColors = {
   completedRow: '#bdbdbd',
   completedRowHover: '#b0b0b0',
   rowHover: '#fafafa',
-  dialogOverdue: '#eeeeee',
+  dialogOverdue: '#ff6467',
 };
 
 export default theme;
