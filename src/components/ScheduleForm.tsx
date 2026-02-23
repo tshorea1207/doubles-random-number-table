@@ -16,11 +16,9 @@ import {
 } from "@mui/material";
 import TuneIcon from "@mui/icons-material/Tune";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
-import GroupIcon from "@mui/icons-material/Group";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import SettingsIcon from "@mui/icons-material/Settings";
 import type { ScheduleParams, FixedPair } from "../types/schedule";
 
-import { FixedPairsInput } from "./FixedPairsInput";
 import { validateFixedPairs } from "../utils/fixedPairs";
 
 interface ScheduleFormProps {
@@ -28,33 +26,32 @@ interface ScheduleFormProps {
   onCancel: () => void;
   isGenerating: boolean;
   hasSchedule?: boolean;
-  onPlayerChangeClick?: () => void;
+  onSettingsClick?: (ctx: { playersCount: number; courtsCount: number }) => void;
+  fixedPairs: FixedPair[];
+  onFixedPairsChange: (pairs: FixedPair[]) => void;
   speechPitch: number;
   onSpeechPitchChange: (pitch: number) => void;
   speechRate: number;
   onSpeechRateChange: (rate: number) => void;
 }
 
-export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, onPlayerChangeClick, speechPitch, onSpeechPitchChange, speechRate, onSpeechRateChange }: ScheduleFormProps) {
+export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, onSettingsClick, fixedPairs, onFixedPairsChange, speechPitch, onSpeechPitchChange, speechRate, onSpeechRateChange }: ScheduleFormProps) {
   const [courts, setCourts] = useState(4);
   const [players, setPlayers] = useState(16);
   const [rounds, setRounds] = useState(15);
   const [w1, setW1] = useState(1.0);
   const [w2, setW2] = useState(0.5);
   const [w3, setW3] = useState(2.0);
-  const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
   const [helpTarget, setHelpTarget] = useState<"w1" | "w2" | "w3" | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [fixedPairsOpen, setFixedPairsOpen] = useState(false);
-
 
   // 参加人数変更時に無効な固定ペアを削除
   useEffect(() => {
     const validPairs = fixedPairs.filter((fp) => fp.player1 <= players && fp.player2 <= players);
     if (validPairs.length !== fixedPairs.length) {
-      setFixedPairs(validPairs);
+      onFixedPairsChange(validPairs);
     }
-  }, [players, fixedPairs]);
+  }, [players, fixedPairs, onFixedPairsChange]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -83,26 +80,7 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: { xs: 1, sm: 2 } }}>
         <Typography variant="h6">スケジュール設定</Typography>
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Tooltip title="参加者の変更">
-            <span>
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<PersonAddIcon />}
-                onClick={onPlayerChangeClick}
-                disabled={!hasSchedule || isGenerating}
-                sx={{
-                  minWidth: { xs: "auto", sm: undefined },
-                  "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
-                }}
-              >
-                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                  参加者の変更
-                </Box>
-              </Button>
-            </span>
-          </Tooltip>
-          <Tooltip title={fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : "固定ペア"}>
+          <Tooltip title={hasSchedule ? "参加者・固定ペア設定" : (fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : "固定ペア設定")}>
             <span>
               <Button
                 variant="outlined"
@@ -110,13 +88,13 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
                 startIcon={
                   fixedPairs.length > 0 ? (
                     <Badge badgeContent={fixedPairs.length} color="primary">
-                      <GroupIcon />
+                      <SettingsIcon />
                     </Badge>
                   ) : (
-                    <GroupIcon />
+                    <SettingsIcon />
                   )
                 }
-                onClick={() => setFixedPairsOpen(true)}
+                onClick={() => onSettingsClick?.({ playersCount: players, courtsCount: courts })}
                 disabled={isGenerating}
                 sx={{
                   minWidth: { xs: "auto", sm: undefined },
@@ -124,7 +102,9 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
                 }}
               >
                 <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                  {fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : "固定ペア"}
+                  {hasSchedule
+                    ? (fixedPairs.length > 0 ? `設定 (固定ペア ${fixedPairs.length}組)` : "設定")
+                    : (fixedPairs.length > 0 ? `固定ペア (${fixedPairs.length}組)` : "固定ペア")}
                 </Box>
               </Button>
             </span>
@@ -227,19 +207,6 @@ export function ScheduleForm({ onGenerate, onCancel, isGenerating, hasSchedule, 
           </Grid>
         </Grid>
       </form>
-
-      {/* 固定ペアダイアログ */}
-      <Dialog open={fixedPairsOpen} onClose={() => setFixedPairsOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>固定ペア設定</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 1 }}>
-            <FixedPairsInput playersCount={players} courtsCount={courts} fixedPairs={fixedPairs} onChange={setFixedPairs} />
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setFixedPairsOpen(false)}>閉じる</Button>
-        </DialogActions>
-      </Dialog>
 
       {/* 詳細設定ダイアログ */}
       <Dialog open={advancedOpen} onClose={() => setAdvancedOpen(false)} maxWidth="sm" fullWidth>

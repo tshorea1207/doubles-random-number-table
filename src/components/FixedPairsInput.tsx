@@ -19,6 +19,7 @@ interface FixedPairsInputProps {
   courtsCount: number;
   fixedPairs: FixedPair[];
   onChange: (pairs: FixedPair[]) => void;
+  activePlayers?: number[]; // 指定時は playersCount の代わりにこのリストを使用（非連続番号対応）
 }
 
 /**
@@ -34,6 +35,7 @@ export function FixedPairsInput({
   courtsCount,
   fixedPairs,
   onChange,
+  activePlayers,
 }: FixedPairsInputProps) {
   const [player1, setPlayer1] = useState<number | ''>('');
   const [player2, setPlayer2] = useState<number | ''>('');
@@ -46,10 +48,11 @@ export function FixedPairsInput({
   });
 
   // 選択可能なプレイヤー（固定ペアに含まれていないプレイヤー）
-  const availablePlayers = Array.from(
+  const allPlayers = activePlayers ?? Array.from(
     { length: playersCount },
     (_, i) => i + 1
-  ).filter((p) => !usedPlayers.has(p));
+  );
+  const availablePlayers = allPlayers.filter((p) => !usedPlayers.has(p));
 
   // ペアを追加
   const handleAdd = () => {

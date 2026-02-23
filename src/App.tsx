@@ -5,8 +5,8 @@ import { ScheduleForm } from "./components/ScheduleForm";
 import { ScheduleTable } from "./components/ScheduleTable";
 import { EvaluationDisplay } from "./components/EvaluationDisplay";
 import { PlayerStatsTable } from "./components/PlayerStatsTable";
-import { PlayerChangePanel } from "./components/PlayerChangePanel";
-import type { ScheduleParams, RegenerationParams } from "./types/schedule";
+import { SettingsDialog } from "./components/SettingsDialog";
+import type { ScheduleParams, RegenerationParams, FixedPair } from "./types/schedule";
 
 function App() {
   const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel } = useScheduleGenerator();
@@ -14,7 +14,9 @@ function App() {
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
   const [openedAt, setOpenedAt] = useState<Record<string, Date>>({});
   const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
-  const [playerChangeOpen, setPlayerChangeOpen] = useState(false);
+  const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [formContext, setFormContext] = useState({ playersCount: 16, courtsCount: 4 });
   const [speechPitch, setSpeechPitch] = useState(1.0);
   const [speechRate, setSpeechRate] = useState(1.0);
 
@@ -41,6 +43,13 @@ function App() {
       return newSet;
     });
   }, []);
+
+  // schedule変更時にfixedPairsを同期
+  useEffect(() => {
+    if (schedule) {
+      setFixedPairs(schedule.fixedPairs);
+    }
+  }, [schedule]);
 
   // 新規生成時のみ消化済み状態をリセット（再生成時は保持）
   useEffect(() => {
@@ -98,7 +107,12 @@ function App() {
           onCancel={cancel}
           isGenerating={isGenerating}
           hasSchedule={!isGenerating && !!schedule && !!lastParams}
-          onPlayerChangeClick={() => setPlayerChangeOpen(true)}
+          onSettingsClick={(ctx) => {
+            setFormContext(ctx);
+            setSettingsDialogOpen(true);
+          }}
+          fixedPairs={fixedPairs}
+          onFixedPairsChange={setFixedPairs}
           speechPitch={speechPitch}
           onSpeechPitchChange={setSpeechPitch}
           speechRate={speechRate}
@@ -140,18 +154,6 @@ function App() {
                 <EvaluationDisplay evaluation={schedule.evaluation} />
               </Box>
             )}
-            {/* 参加者変更ダイアログ */}
-            {!isGenerating && schedule && lastParams && (
-              <PlayerChangePanel
-                open={playerChangeOpen}
-                onClose={() => setPlayerChangeOpen(false)}
-                schedule={schedule}
-                completedRounds={completedMatches}
-                isGenerating={isGenerating}
-                weights={lastParams.weights}
-                onRegenerate={handleRegenerate}
-              />
-            )}
             {schedule && (
               <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>
                 <PlayerStatsTable schedule={schedule} />
@@ -159,6 +161,21 @@ function App() {
             )}
           </>
         )}
+
+        {/* 設定ダイアログ（固定ペア + 参加者変更） */}
+        <SettingsDialog
+          open={settingsDialogOpen}
+          onClose={() => setSettingsDialogOpen(false)}
+          fixedPairs={fixedPairs}
+          onFixedPairsChange={setFixedPairs}
+          playersCount={formContext.playersCount}
+          courtsCount={formContext.courtsCount}
+          schedule={!isGenerating ? schedule : null}
+          completedRounds={completedMatches}
+          isGenerating={isGenerating}
+          weights={lastParams?.weights ?? { w1: 1.0, w2: 0.5, w3: 2.0 }}
+          onRegenerate={handleRegenerate}
+        />
       </Container>
     </>
   );
