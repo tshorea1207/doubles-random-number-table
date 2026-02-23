@@ -141,6 +141,28 @@ function pickMinScore(candidates: number[], scoreFn: (p: number) => number): num
 }
 
 /**
+ * 候補固定ペアからスコア最小のペアを選択する（タイブレークはランダム）
+ */
+function pickMinScoreFixedPair(
+  candidates: FixedPair[],
+  scoreFn: (fp: FixedPair) => number
+): FixedPair {
+  let minScore = Infinity;
+  const best: FixedPair[] = [];
+  for (const fp of candidates) {
+    const score = scoreFn(fp);
+    if (score < minScore) {
+      minScore = score;
+      best.length = 0;
+      best.push(fp);
+    } else if (score === minScore) {
+      best.push(fp);
+    }
+  }
+  return best[Math.floor(Math.random() * best.length)];
+}
+
+/**
  * available 配列から指定プレイヤーを除去する
  */
 function removeFromAvailable(available: number[], player: number): void {
@@ -226,11 +248,34 @@ export function tryAssignCourtWithBacktrackingFixedPairs(
 
   if (applicableFixed.length > 0) {
     const shuffledFixed = shuffle([...applicableFixed]);
-    for (const fp of shuffledFixed) {
-      const p1 = fp.player1;
-      const p2 = fp.player2;
-      const remaining = shuffle(available.filter(p => p !== p1 && p !== p2));
+    for (const fp1 of shuffledFixed) {
+      const p1 = fp1.player1;
+      const p2 = fp1.player2;
+      const remainingSet = new Set(available.filter(p => p !== p1 && p !== p2));
 
+      // Step A: 対戦相手側も固定ペアから選択を試みる
+      const opponentFixed = shuffle(applicableFixed.filter(fp2 =>
+        fp2 !== fp1 && remainingSet.has(fp2.player1) && remainingSet.has(fp2.player2)
+      ));
+      for (const fp2 of opponentFixed) {
+        const p3 = fp2.player1;
+        const p4 = fp2.player2;
+        if (
+          opponentHistory[p1 - 1][p3 - 1] === 0 &&
+          opponentHistory[p1 - 1][p4 - 1] === 0 &&
+          opponentHistory[p2 - 1][p3 - 1] === 0 &&
+          opponentHistory[p2 - 1][p4 - 1] === 0
+        ) {
+          removeFromAvailable(available, p1);
+          removeFromAvailable(available, p2);
+          removeFromAvailable(available, p3);
+          removeFromAvailable(available, p4);
+          return [p1, p2, p3, p4];
+        }
+      }
+
+      // Step B: 固定ペアが使えない場合、個別選択にフォールバック
+      const remaining = shuffle([...remainingSet]);
       for (const p3 of remaining) {
         if (opponentHistory[p1 - 1][p3 - 1] !== 0 || opponentHistory[p2 - 1][p3 - 1] !== 0) continue;
 
@@ -335,11 +380,34 @@ export function tryAssignCourtOpponentOnlyFixedPairs(
 
   if (applicableFixed.length > 0) {
     const shuffledFixed = shuffle([...applicableFixed]);
-    for (const fp of shuffledFixed) {
-      const p1 = fp.player1;
-      const p2 = fp.player2;
-      const remaining = shuffle(available.filter(p => p !== p1 && p !== p2));
+    for (const fp1 of shuffledFixed) {
+      const p1 = fp1.player1;
+      const p2 = fp1.player2;
+      const remainingSet = new Set(available.filter(p => p !== p1 && p !== p2));
 
+      // Step A: 対戦相手側も固定ペアから選択を試みる
+      const opponentFixed = shuffle(applicableFixed.filter(fp2 =>
+        fp2 !== fp1 && remainingSet.has(fp2.player1) && remainingSet.has(fp2.player2)
+      ));
+      for (const fp2 of opponentFixed) {
+        const p3 = fp2.player1;
+        const p4 = fp2.player2;
+        if (
+          opponentHistory[p1 - 1][p3 - 1] === 0 &&
+          opponentHistory[p1 - 1][p4 - 1] === 0 &&
+          opponentHistory[p2 - 1][p3 - 1] === 0 &&
+          opponentHistory[p2 - 1][p4 - 1] === 0
+        ) {
+          removeFromAvailable(available, p1);
+          removeFromAvailable(available, p2);
+          removeFromAvailable(available, p3);
+          removeFromAvailable(available, p4);
+          return [p1, p2, p3, p4];
+        }
+      }
+
+      // Step B: 固定ペアが使えない場合、個別選択にフォールバック
+      const remaining = shuffle([...remainingSet]);
       for (const p3 of remaining) {
         if (opponentHistory[p1 - 1][p3 - 1] !== 0 || opponentHistory[p2 - 1][p3 - 1] !== 0) continue;
 
@@ -445,12 +513,32 @@ export function assignCourtWithScoringFixedPairs(
   );
 
   if (applicableFixed.length > 0) {
-    const fp = applicableFixed[Math.floor(Math.random() * applicableFixed.length)];
-    const p1 = fp.player1;
-    const p2 = fp.player2;
+    const fp1 = applicableFixed[Math.floor(Math.random() * applicableFixed.length)];
+    const p1 = fp1.player1;
+    const p2 = fp1.player2;
     removeFromAvailable(available, p1);
     removeFromAvailable(available, p2);
 
+    // Step A: 対戦相手側も固定ペアから選択を試みる
+    const remainingApplicable = applicableFixed.filter(fp2 =>
+      fp2 !== fp1 && available.includes(fp2.player1) && available.includes(fp2.player2)
+    );
+
+    if (remainingApplicable.length > 0) {
+      const fp2 = pickMinScoreFixedPair(remainingApplicable, fp =>
+        opponentHistory[p1 - 1][fp.player1 - 1] + opponentHistory[p1 - 1][fp.player2 - 1]
+        + opponentHistory[p2 - 1][fp.player1 - 1] + opponentHistory[p2 - 1][fp.player2 - 1]
+        + consecutiveOpponentPenalty(fp.player1, [p1, p2], previousOpponents)
+        + consecutiveOpponentPenalty(fp.player2, [p1, p2], previousOpponents)
+      );
+      const p3 = fp2.player1;
+      const p4 = fp2.player2;
+      removeFromAvailable(available, p3);
+      removeFromAvailable(available, p4);
+      return [p1, p2, p3, p4];
+    }
+
+    // Step B: 固定ペアが使えない場合、個別選択にフォールバック
     const p3 = pickMinScore(available, p =>
       opponentHistory[p1 - 1][p - 1] + opponentHistory[p2 - 1][p - 1]
       + consecutiveOpponentPenalty(p, [p1, p2], previousOpponents)
