@@ -336,15 +336,15 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                             コート {idx + 1}
                           </Typography>
                           <Chip
-                            label={`${match.pairA.player1}, ${match.pairA.player2}`}
-                            sx={{ bgcolor: scheduleColors.teamA, fontSize: "1.25rem", fontWeight: 700, height: 36 }}
+                            label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player2}</Box></>}
+                            sx={{ flex: 1, bgcolor: scheduleColors.teamA, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
                           />
                           <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
                             vs
                           </Typography>
                           <Chip
-                            label={`${match.pairB.player1}, ${match.pairB.player2}`}
-                            sx={{ bgcolor: scheduleColors.teamB, fontSize: "1.25rem", fontWeight: 700, height: 36 }}
+                            label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player2}</Box></>}
+                            sx={{ flex: 1, bgcolor: scheduleColors.teamB, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
                           />
                         </Box>
                       ))}
@@ -395,15 +395,15 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                       コート {idx + 1}
                     </Typography>
                     <Chip
-                      label={`${match.pairA.player1}, ${match.pairA.player2}`}
-                      sx={{ bgcolor: scheduleColors.teamA, fontSize: "1.25rem", fontWeight: 700, height: 36 }}
+                      label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player2}</Box></>}
+                      sx={{ flex: 1, bgcolor: scheduleColors.teamA, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
                     />
                     <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
                       vs
                     </Typography>
                     <Chip
-                      label={`${match.pairB.player1}, ${match.pairB.player2}`}
-                      sx={{ bgcolor: scheduleColors.teamB, fontSize: "1.25rem", fontWeight: 700, height: 36 }}
+                      label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player2}</Box></>}
+                      sx={{ flex: 1, bgcolor: scheduleColors.teamB, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
                     />
                   </Box>
                 ))}
@@ -455,9 +455,10 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                   <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                     コート {idx + 1}
                   </Typography>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Box
                       sx={{
+                        flex: 1,
                         bgcolor: scheduleColors.teamA,
                         borderRadius: 2,
                         px: { xs: 1, sm: 1.5 },
@@ -466,13 +467,17 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                         fontWeight: 700,
                         textAlign: "center",
                         whiteSpace: "nowrap",
+                        fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {match.pairA.player1},{match.pairA.player2}
+                      <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player1}</Box>
+                      ,
+                      <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player2}</Box>
                     </Box>
                     <Typography sx={{ fontSize: "1rem", color: "text.secondary", fontWeight: 600 }}>vs</Typography>
                     <Box
                       sx={{
+                        flex: 1,
                         bgcolor: scheduleColors.teamB,
                         borderRadius: 2,
                         px: { xs: 1, sm: 1.5 },
@@ -481,9 +486,12 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                         fontWeight: 700,
                         textAlign: "center",
                         whiteSpace: "nowrap",
+                        fontVariantNumeric: "tabular-nums",
                       }}
                     >
-                      {match.pairB.player1},{match.pairB.player2}
+                      <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player1}</Box>
+                      ,
+                      <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player2}</Box>
                     </Box>
                   </Box>
                 </Box>
