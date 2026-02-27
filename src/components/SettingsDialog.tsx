@@ -18,7 +18,7 @@ import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PersonRemoveIcon from '@mui/icons-material/PersonRemove';
 import type { Schedule, RegenerationParams, FixedPair } from '../types/schedule';
 import { FixedPairsInput } from './FixedPairsInput';
-import { validateFixedPairs } from '../utils/fixedPairs';
+
 
 interface SettingsDialogProps {
   open: boolean;
@@ -157,8 +157,6 @@ export function SettingsDialog({
   const activePlayersForFixedPairs = schedule
     ? [...currentActivePlayers.filter(p => !pendingRemoves.includes(p)), ...pendingAdds].sort((a, b) => a - b)
     : undefined;
-
-  const fixedPairsValidation = validateFixedPairs(fixedPairs, effectivePlayersCount, effectiveCourts);
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
