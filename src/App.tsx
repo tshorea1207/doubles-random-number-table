@@ -6,7 +6,7 @@ import { ScheduleTable } from "./components/ScheduleTable";
 import { EvaluationDisplay } from "./components/EvaluationDisplay";
 import { PlayerStatsTable } from "./components/PlayerStatsTable";
 import { SettingsDialog } from "./components/SettingsDialog";
-import type { ScheduleParams, RegenerationParams, FixedPair } from "./types/schedule";
+import type { ScheduleParams, RegenerationParams, FixedPair, Round } from "./types/schedule";
 
 function App() {
   const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel } = useScheduleGenerator();
@@ -89,6 +89,28 @@ function App() {
     });
   }, [schedule, lastParams, regenerate]);
 
+  // ラウンド編集 → 該当ラウンド以降を再生成
+  const handleEditRound = useCallback(
+    (roundIndex: number, editedRound: Round) => {
+      if (!schedule || !lastParams) return;
+      isRegenerating.current = true;
+      const completedRounds = [
+        ...schedule.rounds.slice(0, roundIndex),
+        editedRound,
+      ];
+      const remainingRoundsCount = schedule.rounds.length - roundIndex - 1;
+      regenerate({
+        courtsCount: schedule.courts,
+        completedRounds,
+        activePlayers: schedule.activePlayers,
+        remainingRoundsCount,
+        weights: lastParams.weights,
+        fixedPairs: schedule.fixedPairs,
+      });
+    },
+    [schedule, lastParams, regenerate],
+  );
+
   return (
     <>
       {/* ヘッダー */}
@@ -148,6 +170,7 @@ function App() {
               onRoundOpened={handleRoundOpened}
               speechPitch={speechPitch}
               speechRate={speechRate}
+              onEditRound={!isGenerating && schedule && lastParams ? handleEditRound : undefined}
             />
             {schedule && (
               <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>
