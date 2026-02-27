@@ -110,6 +110,16 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
     setSwapTarget(null);
   }, [selectedRound]);
 
+  // schedule更新時にダイアログ表示中のラウンドを最新データに同期
+  useEffect(() => {
+    if (!selectedRound) return;
+    const updated = schedule.rounds.find((r) => r.roundNumber === selectedRound.roundNumber);
+    if (updated) {
+      setSelectedRound(updated);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schedule.rounds]);
+
   // ダイアログ表示中のみ30秒ごとに現在時刻を更新
   useEffect(() => {
     if (!selectedRound) return;
@@ -189,7 +199,6 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
     const roundIndex = schedule.rounds.findIndex((r) => r.roundNumber === selectedRound.roundNumber);
     if (roundIndex === -1) return;
     onEditRound(roundIndex, editedRound);
-    handleDialogClose();
   };
 
   const hasRestingPlayers = schedule.rounds.some((round) => round.restingPlayers && round.restingPlayers.length > 0);
