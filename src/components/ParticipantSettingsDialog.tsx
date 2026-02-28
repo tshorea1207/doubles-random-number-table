@@ -477,20 +477,18 @@ export function ParticipantSettingsDialog({
               )}
             </Box>
 
-            <Button
-              variant="contained"
-              onClick={handleRegenerate}
-              disabled={!canRegenerate}
-              fullWidth
-            >
-              {remainingRounds > 0
-                ? `変更を適用してラウンド ${completedCount + 1}〜${totalRounds} を再生成`
-                : '変更を適用'}
-            </Button>
           </>
         )}
       </DialogContent>
       <DialogActions>
+        <Button
+          variant="contained"
+          onClick={handleRegenerate}
+          disabled={!schedule || !canRegenerate}
+          fullWidth
+        >
+          再生成
+        </Button>
         <Button onClick={onClose}>閉じる</Button>
       </DialogActions>
     </Dialog>
