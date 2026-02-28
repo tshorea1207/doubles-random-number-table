@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Popover,
+
   Stack,
   Tooltip,
 } from "@mui/material";
@@ -70,7 +70,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const [pendingAdds, setPendingAdds] = useState<number[]>([]);
   const [pendingRemoves, setPendingRemoves] = useState<number[]>([]);
   const [pairSelection, setPairSelection] = useState<PairSelectionState>({ mode: 'inactive' });
-  const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
+  const [showPlayerGrid, setShowPlayerGrid] = useState(false);
 
   // 参加人数変更時に無効な固定ペアを削除
   useEffect(() => {
@@ -419,136 +419,116 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
             )}
           </Grid>
 
-          {/* === プレイヤーグリッド === */}
+          {/* === 詳細設定セクション === */}
           <Grid item xs={12} order={3}>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                {schedule ? '参加者' : 'プレイヤー'}
-              </Typography>
-
-              {/* ペア選択モード時のバナー */}
-              {pairSelection.mode === 'selecting' && (
-                <Alert
-                  severity="info"
-                  action={
-                    <Button size="small" onClick={() => setPairSelection({ mode: 'inactive' })}>
-                      キャンセル
-                    </Button>
-                  }
-                  sx={{ mb: 1 }}
-                >
-                  {pairSelection.firstPlayer !== null
-                    ? `プレイヤー ${pairSelection.firstPlayer} のペア相手を選択`
-                    : '固定ペアにする2人を選択してください'}
-                </Alert>
-              )}
-
-              {/* 5列グリッド */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, pt: 0.5 }}>
-                {gridPlayers.map(p => (
-                  <Button
-                    key={p}
-                    variant={getButtonVariant(p)}
-                    disabled={isButtonDisabled(p)}
-                    onClick={() => handlePlayerTap(p)}
-                    sx={getButtonSx(p)}
-                  >
-                    {p}
-                  </Button>
-                ))}
-                {/* 追加ボタン（生成後のみ） */}
-                {schedule && pairSelection.mode === 'inactive' && (
-                  <Button
-                    variant="outlined"
-                    color="success"
-                    onClick={handleAddPlayer}
-                    disabled={isGenerating}
-                    sx={{ minWidth: 48, minHeight: 48, fontSize: '1.2rem', fontWeight: 700 }}
-                  >
-                    +
-                  </Button>
-                )}
-              </Box>
-
-              {/* 生成後: タップでトグルの説明 */}
-              {schedule && pairSelection.mode === 'inactive' && (
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  タップで参加/不参加を切り替え
-                </Typography>
-              )}
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            {/* === 固定ペアセクション === */}
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
-                <Typography variant="subtitle2">固定ペア（任意）</Typography>
-                <IconButton
-                  size="small"
-                  onClick={(e) => setHelpAnchorEl(e.currentTarget)}
-                  sx={{ p: 0.25 }}
-                >
-                  <HelpOutlineIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-                <Popover
-                  open={Boolean(helpAnchorEl)}
-                  anchorEl={helpAnchorEl}
-                  onClose={() => setHelpAnchorEl(null)}
-                  anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                >
-                  <Typography sx={{ p: 1.5 }} variant="body2">
-                    固定ペアは全ラウンドで常に一緒にプレイします
-                  </Typography>
-                </Popover>
-              </Box>
-
-              {/* 現在の固定ペアをチップで表示 */}
-              {fixedPairs.length > 0 && (
-                <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
-                  {fixedPairs.map((pair, index) => (
-                    <Chip
-                      key={index}
-                      label={`${pair.player1} & ${pair.player2}`}
-                      onDelete={() => handleRemoveFixedPair(index)}
-                      variant="outlined"
-                      sx={{
-                        borderColor: PAIR_COLORS[index % PAIR_COLORS.length],
-                        borderWidth: 2,
-                        color: PAIR_COLORS[index % PAIR_COLORS.length],
-                        fontWeight: 600,
-                      }}
-                    />
-                  ))}
-                </Stack>
-              )}
-
-              {/* ペア追加ボタン */}
+            {/* ヘッダー行: ラベル + ボタン */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Typography variant="subtitle2">詳細設定</Typography>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => setShowPlayerGrid(prev => !prev)}
+                disabled={isGenerating}
+              >
+                追加/削除
+              </Button>
               {pairSelectablePlayers.size >= 2 && pairSelection.mode === 'inactive' && (
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => setPairSelection({ mode: 'selecting', firstPlayer: null })}
+                  onClick={() => {
+                    setPairSelection({ mode: 'selecting', firstPlayer: null });
+                    setShowPlayerGrid(true);
+                  }}
                   disabled={isGenerating}
                 >
-                  ペアを追加
+                  固定ペア
                 </Button>
               )}
-
-              {/* 選択可能なプレイヤーがいない場合 */}
-              {pairSelectablePlayers.size < 2 && fixedPairs.length > 0 && pairSelection.mode === 'inactive' && (
-                <Typography variant="caption" color="text.secondary">
-                  全てのプレイヤーが固定ペアに割り当て済みです
-                </Typography>
-              )}
-
-              {/* 警告メッセージ */}
-              {fixedPairsValidation.warnings?.map((warning, i) => (
-                <Alert severity="warning" sx={{ mt: 1 }} key={i}>
-                  {warning}
-                </Alert>
-              ))}
             </Box>
+
+            {/* 固定ペアチップ（常に表示） */}
+            {fixedPairs.length > 0 && (
+              <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
+                {fixedPairs.map((pair, index) => (
+                  <Chip
+                    key={index}
+                    label={`${pair.player1} & ${pair.player2}`}
+                    onDelete={() => handleRemoveFixedPair(index)}
+                    variant="outlined"
+                    sx={{
+                      borderColor: PAIR_COLORS[index % PAIR_COLORS.length],
+                      borderWidth: 2,
+                      color: PAIR_COLORS[index % PAIR_COLORS.length],
+                      fontWeight: 600,
+                    }}
+                  />
+                ))}
+              </Stack>
+            )}
+
+            {/* 固定ペア警告メッセージ */}
+            {fixedPairsValidation.warnings?.map((warning, i) => (
+              <Alert severity="warning" sx={{ mt: 1 }} key={i}>
+                {warning}
+              </Alert>
+            ))}
+
+            {/* プレイヤーグリッド（トグルまたはペア選択モード時に表示） */}
+            {(showPlayerGrid || pairSelection.mode === 'selecting') && (
+              <Box sx={{ mt: 1 }}>
+                {/* ペア選択モード時のバナー */}
+                {pairSelection.mode === 'selecting' && (
+                  <Alert
+                    severity="info"
+                    action={
+                      <Button size="small" onClick={() => setPairSelection({ mode: 'inactive' })}>
+                        キャンセル
+                      </Button>
+                    }
+                    sx={{ mb: 1 }}
+                  >
+                    {pairSelection.firstPlayer !== null
+                      ? `プレイヤー ${pairSelection.firstPlayer} のペア相手を選択`
+                      : '固定ペアにする2人を選択してください'}
+                  </Alert>
+                )}
+
+                {/* 5列グリッド */}
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, pt: 0.5 }}>
+                  {gridPlayers.map(p => (
+                    <Button
+                      key={p}
+                      variant={getButtonVariant(p)}
+                      disabled={isButtonDisabled(p)}
+                      onClick={() => handlePlayerTap(p)}
+                      sx={getButtonSx(p)}
+                    >
+                      {p}
+                    </Button>
+                  ))}
+                  {/* 追加ボタン（生成後のみ） */}
+                  {schedule && pairSelection.mode === 'inactive' && (
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      onClick={handleAddPlayer}
+                      disabled={isGenerating}
+                      sx={{ minWidth: 48, minHeight: 48, fontSize: '1.2rem', fontWeight: 700 }}
+                    >
+                      +
+                    </Button>
+                  )}
+                </Box>
+
+                {/* 生成後: タップでトグルの説明 */}
+                {schedule && pairSelection.mode === 'inactive' && (
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                    タップで参加/不参加を切り替え
+                  </Typography>
+                )}
+              </Box>
+            )}
 
             {/* === 変更内容プレビュー（生成後 & 変更ありの場合のみ） === */}
             {schedule && hasPendingChanges && (
