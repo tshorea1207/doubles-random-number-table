@@ -209,6 +209,9 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
     const roundIndex = schedule.rounds.findIndex((r) => r.roundNumber === selectedRound.roundNumber);
     if (roundIndex === -1) return;
     onEditRound(roundIndex, editedRound);
+    setEditedRound(null);
+    setChangedPlayers(new Set());
+    setSwapTarget(null);
   };
 
   const hasRestingPlayers = schedule.rounds.some((round) => round.restingPlayers && round.restingPlayers.length > 0);
