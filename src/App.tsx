@@ -5,7 +5,6 @@ import { ScheduleForm } from "./components/ScheduleForm";
 import { ScheduleTable } from "./components/ScheduleTable";
 import { EvaluationDisplay } from "./components/EvaluationDisplay";
 import { PlayerStatsTable } from "./components/PlayerStatsTable";
-import { ParticipantSettingsDialog } from "./components/ParticipantSettingsDialog";
 import type { ScheduleParams, RegenerationParams, FixedPair, Round } from "./types/schedule";
 
 function App() {
@@ -15,8 +14,6 @@ function App() {
   const [openedAt, setOpenedAt] = useState<Record<string, Date>>({});
   const [lastParams, setLastParams] = useState<ScheduleParams | null>(null);
   const [fixedPairs, setFixedPairs] = useState<FixedPair[]>([]);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
-  const [formContext, setFormContext] = useState({ playersCount: 16, courtsCount: 4 });
   const [speechPitch, setSpeechPitch] = useState(1.0);
   const [speechRate, setSpeechRate] = useState(1.0);
 
@@ -126,13 +123,11 @@ function App() {
         {/* 入力フォーム */}
         <ScheduleForm
           onGenerate={handleGenerate}
+          onRegenerate={handleRegenerate}
           onCancel={cancel}
           isGenerating={isGenerating}
-          hasSchedule={!isGenerating && !!schedule && !!lastParams}
-          onSettingsClick={(ctx) => {
-            setFormContext(ctx);
-            setSettingsDialogOpen(true);
-          }}
+          schedule={!isGenerating ? schedule : null}
+          completedMatches={completedMatches}
           fixedPairs={fixedPairs}
           onFixedPairsChange={setFixedPairs}
           speechPitch={speechPitch}
@@ -184,21 +179,6 @@ function App() {
             )}
           </>
         )}
-
-        {/* 設定ダイアログ（固定ペア + 参加者変更） */}
-        <ParticipantSettingsDialog
-          open={settingsDialogOpen}
-          onClose={() => setSettingsDialogOpen(false)}
-          fixedPairs={fixedPairs}
-          onFixedPairsChange={setFixedPairs}
-          playersCount={formContext.playersCount}
-          courtsCount={formContext.courtsCount}
-          schedule={!isGenerating ? schedule : null}
-          completedRounds={completedMatches}
-          isGenerating={isGenerating}
-          weights={lastParams?.weights ?? { w1: 1.0, w2: 0.5, w3: 2.0 }}
-          onRegenerate={handleRegenerate}
-        />
       </Container>
     </>
   );
