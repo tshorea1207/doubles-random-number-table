@@ -182,10 +182,6 @@ export function SettingsDialog({
             <Typography variant="subtitle2" gutterBottom>
               参加者の変更
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              現在の参加者: {currentActivePlayers.join(', ')} ({currentActivePlayers.length}人)
-              {' / '}消化済み: {completedCount} / {totalRounds} ラウンド
-            </Typography>
 
             {/* 追加・離脱コントロール */}
             <Box sx={{
@@ -289,9 +285,6 @@ export function SettingsDialog({
                 : '変更を適用'}
             </Button>
 
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-              ※消化済みラウンド（グレー行）は保持されます
-            </Typography>
           </>
         )}
       </DialogContent>

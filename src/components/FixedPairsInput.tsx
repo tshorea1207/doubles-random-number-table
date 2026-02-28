@@ -2,7 +2,9 @@ import { useState } from 'react';
 import {
   Box,
   FormControl,
+  IconButton,
   InputLabel,
+  Popover,
   Select,
   MenuItem,
   Button,
@@ -11,6 +13,7 @@ import {
   Typography,
   Alert,
 } from '@mui/material';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import type { FixedPair } from '../types/schedule';
 import { normalizeFixedPair, validateFixedPairs } from '../utils/fixedPairs';
 
@@ -39,6 +42,7 @@ export function FixedPairsInput({
 }: FixedPairsInputProps) {
   const [player1, setPlayer1] = useState<number | ''>('');
   const [player2, setPlayer2] = useState<number | ''>('');
+  const [helpAnchorEl, setHelpAnchorEl] = useState<HTMLElement | null>(null);
 
   // 既に固定ペアに含まれているプレイヤーを取得
   const usedPlayers = new Set<number>();
@@ -82,9 +86,28 @@ export function FixedPairsInput({
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
-        固定ペア（任意）
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+        <Typography variant="subtitle2">
+          固定ペア（任意）
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={(e) => setHelpAnchorEl(e.currentTarget)}
+          sx={{ p: 0.25 }}
+        >
+          <HelpOutlineIcon sx={{ fontSize: 18 }} />
+        </IconButton>
+        <Popover
+          open={Boolean(helpAnchorEl)}
+          anchorEl={helpAnchorEl}
+          onClose={() => setHelpAnchorEl(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        >
+          <Typography sx={{ p: 1.5 }} variant="body2">
+            固定ペアは全ラウンドで常に一緒にプレイします
+          </Typography>
+        </Popover>
+      </Box>
 
       {/* 現在の固定ペアをチップで表示 */}
       {fixedPairs.length > 0 && (
@@ -165,14 +188,6 @@ export function FixedPairsInput({
         </Alert>
       ))}
 
-      {/* ヘルパーテキスト */}
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ mt: 1, display: 'block' }}
-      >
-        固定ペアは全ラウンドで常に一緒にプレイします
-      </Typography>
     </Box>
   );
 }
