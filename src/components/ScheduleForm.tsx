@@ -22,17 +22,8 @@ import type { ScheduleParams, RegenerationParams, FixedPair, Schedule } from "..
 
 import { normalizeFixedPair, validateFixedPairs } from "../utils/fixedPairs";
 
-// 固定ペアの色パレット（最大8色）
-const PAIR_COLORS = [
-  '#1565c0', // blue
-  '#e65100', // orange
-  '#2e7d32', // green
-  '#7b1fa2', // purple
-  '#c62828', // red
-  '#00838f', // teal
-  '#4e342e', // brown
-  '#37474f', // blue-grey
-];
+// 固定ペアの色（単色）
+const PAIR_COLOR = '#1565c0';
 
 type PairSelectionState =
   | { mode: 'inactive' }
@@ -276,8 +267,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
       return { ...base, opacity: 0.4 };
     }
     if (isInPair) {
-      const color = PAIR_COLORS[pairIndex % PAIR_COLORS.length];
-      return { ...base, borderColor: color, borderWidth: 2.5, color, '&:hover': { borderColor: color, borderWidth: 2.5 } };
+      return { ...base, bgcolor: PAIR_COLOR, color: '#fff', '&:hover': { bgcolor: '#0d47a1' } };
     }
     return base;
   };
@@ -286,8 +276,9 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     const isPendingAdd = pendingAdds.includes(player);
     const isFirstSelected = pairSelection.mode === 'selecting'
       && pairSelection.firstPlayer === player;
+    const isInPair = playerPairMap.has(player);
 
-    if (isFirstSelected || isPendingAdd) return 'contained';
+    if (isFirstSelected || isPendingAdd || isInPair) return 'contained';
     return 'outlined';
   };
 
@@ -488,9 +479,9 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
                     onDelete={() => handleRemoveFixedPair(index)}
                     variant="outlined"
                     sx={{
-                      borderColor: PAIR_COLORS[index % PAIR_COLORS.length],
+                      borderColor: PAIR_COLOR,
                       borderWidth: 2,
-                      color: PAIR_COLORS[index % PAIR_COLORS.length],
+                      color: PAIR_COLOR,
                       fontWeight: 600,
                     }}
                   />
