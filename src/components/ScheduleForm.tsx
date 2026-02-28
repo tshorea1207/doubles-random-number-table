@@ -209,6 +209,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
       const newPair = normalizeFixedPair(pairSelection.firstPlayer, player);
       onFixedPairsChange([...fixedPairs, newPair]);
       setPairSelection({ mode: 'inactive' });
+      setShowPlayerGrid(false);
     }
   };
 
@@ -445,6 +446,19 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
                   固定ペア
                 </Button>
               )}
+              {pairSelection.mode === 'selecting' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="secondary"
+                  onClick={() => {
+                    setPairSelection({ mode: 'inactive' });
+                    setShowPlayerGrid(false);
+                  }}
+                >
+                  キャンセル
+                </Button>
+              )}
             </Box>
 
             {/* 固定ペアチップ（常に表示） */}
@@ -477,22 +491,6 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
             {/* プレイヤーグリッド（トグルまたはペア選択モード時に表示） */}
             {(showPlayerGrid || pairSelection.mode === 'selecting') && (
               <Box sx={{ mt: 1 }}>
-                {/* ペア選択モード時のバナー */}
-                {pairSelection.mode === 'selecting' && (
-                  <Alert
-                    severity="info"
-                    action={
-                      <Button size="small" onClick={() => setPairSelection({ mode: 'inactive' })}>
-                        キャンセル
-                      </Button>
-                    }
-                    sx={{ mb: 1 }}
-                  >
-                    {pairSelection.firstPlayer !== null
-                      ? `プレイヤー ${pairSelection.firstPlayer} のペア相手を選択`
-                      : '固定ペアにする2人を選択してください'}
-                  </Alert>
-                )}
 
                 {/* 5列グリッド */}
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, pt: 0.5 }}>
@@ -530,63 +528,6 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
               </Box>
             )}
 
-            {/* === 変更内容プレビュー（生成後 & 変更ありの場合のみ） === */}
-            {schedule && hasPendingChanges && (
-              <>
-                <Divider sx={{ my: 2 }} />
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>変更内容:</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                    {pendingAdds.map(p => (
-                      <Chip
-                        key={`add-${p}`}
-                        label={`+ ${p}`}
-                        onDelete={() => setPendingAdds(prev => prev.filter(x => x !== p))}
-                        variant="outlined"
-                        sx={{
-                          borderColor: '#2e7d32',
-                          borderWidth: 2,
-                          color: '#2e7d32',
-                          fontWeight: 600,
-                        }}
-                      />
-                    ))}
-                    {pendingRemoves.map(p => (
-                      <Chip
-                        key={`rm-${p}`}
-                        label={`- ${p}`}
-                        onDelete={() => setPendingRemoves(prev => prev.filter(x => x !== p))}
-                        variant="outlined"
-                        sx={{
-                          borderColor: '#d32f2f',
-                          borderWidth: 2,
-                          color: '#d32f2f',
-                          fontWeight: 600,
-                        }}
-                      />
-                    ))}
-                  </Box>
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                    変更後: {newActivePlayers.length}人
-                    {newRestingCount > 0 && ` (毎ラウンド ${newRestingCount}人が休憩)`}
-                  </Typography>
-
-                  {!playersEnough && (
-                    <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                      参加者数が{effectiveCourts * 4}人以上必要です
-                    </Typography>
-                  )}
-
-                  {pendingRemoves.length > 0 && fixedPairs.some(
-                    fp => pendingRemoves.includes(fp.player1) || pendingRemoves.includes(fp.player2)
-                  ) && (
-                    <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
-                      ※ 離脱プレイヤーを含む固定ペアは自動的に解除されます
-                    </Typography>
-                  )}
-                </Box>
-              </>
-            )}
           </Grid>
 
           {/* 送信ボタン */}
