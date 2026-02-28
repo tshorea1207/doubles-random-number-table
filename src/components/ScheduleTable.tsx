@@ -546,8 +546,8 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                   ? (playerNum: number) => (e: React.MouseEvent) => { e.stopPropagation(); handlePlayerTap(playerNum); }
                   : undefined;
                 return (
-                  <Box key={idx} sx={{ mb: 2 }}>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                  <Box key={idx} sx={{ mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.25 }}>
                       コート {idx + 1}
                     </Typography>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -557,7 +557,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           bgcolor: scheduleColors.teamA,
                           borderRadius: 2,
                           px: { xs: 1, sm: 1.5 },
-                          py: 1,
+                          py: 0.5,
                           fontSize: "clamp(2.5rem, 8vw, 4rem)",
                           fontWeight: 700,
                           textAlign: "center",
@@ -576,7 +576,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           bgcolor: scheduleColors.teamB,
                           borderRadius: 2,
                           px: { xs: 1, sm: 1.5 },
-                          py: 1,
+                          py: 0.5,
                           fontSize: "clamp(2.5rem, 8vw, 4rem)",
                           fontWeight: 700,
                           textAlign: "center",
