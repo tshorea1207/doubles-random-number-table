@@ -212,16 +212,23 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       }
 
       const previousRound = allRounds[allRounds.length - 1];
-      const round = this.generateRound(
-        roundNumber,
-        activePlayers,
-        courtsCount,
-        pairHistory,
-        opponentHistory,
-        restCounts,
-        fixedPairs,
-        previousRound,
-      );
+      let round: Round;
+      if (previousRound === undefined) {
+        // 消化済ラウンドなし: 固定配置で最初のラウンドを生成
+        round = this.createFirstRound(activePlayers, courtsCount);
+        round = { ...round, roundNumber };
+      } else {
+        round = this.generateRound(
+          roundNumber,
+          activePlayers,
+          courtsCount,
+          pairHistory,
+          opponentHistory,
+          restCounts,
+          fixedPairs,
+          previousRound,
+        );
+      }
       allRounds.push(round);
       updateCountMatrices(round, pairHistory, opponentHistory);
       updateRestCounts(round, restCounts);
