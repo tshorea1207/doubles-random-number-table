@@ -32,6 +32,7 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import type { Schedule, Match, Round } from "../types/schedule";
 import { scheduleColors } from "../theme";
 import { useSpeech, buildSpeechText } from "../hooks/useSpeech";
+import { PlayerGridDialog } from "./PlayerGridDialog";
 
 interface ScheduleTableProps {
   schedule: Schedule;
@@ -653,27 +654,13 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
       </Dialog>
 
       {/* プレイヤー番号選択グリッドダイアログ */}
-      <Dialog open={swapTarget !== null} onClose={() => setSwapTarget(null)}>
-        <DialogTitle>変更先を選択</DialogTitle>
-        <DialogContent>
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, pt: 0.5 }}>
-            {schedule.activePlayers.map((p) => (
-              <Button
-                key={p}
-                variant={p === swapTarget ? "contained" : "outlined"}
-                disabled={p === swapTarget}
-                onClick={() => handleSwap(swapTarget!, p)}
-                sx={{ minWidth: 48, minHeight: 48, fontSize: "1.2rem", fontWeight: 700 }}
-              >
-                {p}
-              </Button>
-            ))}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setSwapTarget(null)}>キャンセル</Button>
-        </DialogActions>
-      </Dialog>
+      <PlayerGridDialog
+        open={swapTarget !== null}
+        swapTarget={swapTarget}
+        activePlayers={schedule.activePlayers}
+        onSwap={handleSwap}
+        onClose={() => setSwapTarget(null)}
+      />
     </Paper>
   );
 }
