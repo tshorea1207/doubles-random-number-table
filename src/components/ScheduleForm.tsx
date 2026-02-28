@@ -463,7 +463,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
             {/* 固定ペアチップ（常に表示） */}
             {fixedPairs.length > 0 && (
-              <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
+              <Stack direction="row" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
                 {fixedPairs.map((pair, index) => (
                   <Chip
                     key={index}
