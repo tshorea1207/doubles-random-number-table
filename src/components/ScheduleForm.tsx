@@ -4,7 +4,6 @@ import {
   Slider,
   Button,
   Chip,
-  Divider,
   Typography,
   Paper,
   Grid,
@@ -181,10 +180,6 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const hasPendingChanges = pendingAdds.length > 0 || pendingRemoves.length > 0 || fixedPairsChanged;
   const effectiveCourts = schedule?.courts ?? courts;
   const playersEnough = newActivePlayers.length >= effectiveCourts * 4;
-
-  const newRestingCount = schedule
-    ? Math.max(0, newActivePlayers.length - schedule.courts * 4)
-    : 0;
 
   // 次のプレイヤー番号
   const nextPlayerNumber = useMemo(() => {
