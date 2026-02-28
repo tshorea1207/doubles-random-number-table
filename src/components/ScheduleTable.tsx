@@ -32,7 +32,7 @@ import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import type { Schedule, Match, Round } from "../types/schedule";
 import { scheduleColors } from "../theme";
 import { useSpeech, buildSpeechText } from "../hooks/useSpeech";
-import { PlayerGridDialog } from "./PlayerGridDialog";
+
 
 interface ScheduleTableProps {
   schedule: Schedule;
@@ -209,6 +209,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
     const roundIndex = schedule.rounds.findIndex((r) => r.roundNumber === selectedRound.roundNumber);
     if (roundIndex === -1) return;
     onEditRound(roundIndex, editedRound);
+    setSelectedRound(editedRound);
     setEditedRound(null);
     setChangedPlayers(new Set());
     setSwapTarget(null);

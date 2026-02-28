@@ -5,7 +5,7 @@ import { ScheduleForm } from "./components/ScheduleForm";
 import { ScheduleTable } from "./components/ScheduleTable";
 import { EvaluationDisplay } from "./components/EvaluationDisplay";
 import { PlayerStatsTable } from "./components/PlayerStatsTable";
-import { SettingsDialog } from "./components/SettingsDialog";
+import { ParticipantSettingsDialog } from "./components/ParticipantSettingsDialog";
 import type { ScheduleParams, RegenerationParams, FixedPair, Round } from "./types/schedule";
 
 function App() {
@@ -186,7 +186,7 @@ function App() {
         )}
 
         {/* 設定ダイアログ（固定ペア + 参加者変更） */}
-        <SettingsDialog
+        <ParticipantSettingsDialog
           open={settingsDialogOpen}
           onClose={() => setSettingsDialogOpen(false)}
           fixedPairs={fixedPairs}
