@@ -23,17 +23,14 @@ export function normalizeFixedPair(p1: number, p2: number): FixedPair {
  * チェック項目:
  * - 同一プレイヤーが複数のペアに含まれていないか
  * - プレイヤー番号が有効範囲内か
- * - 固定ペア数がコート数を超えていないか（警告）
  *
  * @param fixedPairs - 固定ペアの配列
  * @param playersCount - 参加人数
- * @param courtsCount - コート数
  * @returns バリデーション結果
  */
 export function validateFixedPairs(
   fixedPairs: FixedPair[],
-  playersCount: number,
-  courtsCount: number
+  playersCount: number
 ): FixedPairsValidation {
   // 空の場合は常に有効
   if (fixedPairs.length === 0) {
@@ -75,17 +72,8 @@ export function validateFixedPairs(
     }
   }
 
-  // 警告: 固定ペア数 > コート数
-  const warnings: string[] = [];
-  if (fixedPairs.length > courtsCount) {
-    warnings.push(
-      `固定ペア数（${fixedPairs.length}組）がコート数（${courtsCount}面）を超えています。一部の固定ペア同士が対戦することになります。`
-    );
-  }
-
   return {
     isValid: true,
-    warnings: warnings.length > 0 ? warnings : undefined,
   };
 }
 

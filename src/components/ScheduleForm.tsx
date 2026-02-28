@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, FormEvent } from "react";
 import {
-  Alert,
   Box,
   Slider,
   Button,
@@ -197,7 +196,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const effectivePlayersCount = schedule
     ? Math.max(...currentActivePlayers, ...pendingAdds, 0)
     : players;
-  const fixedPairsValidation = validateFixedPairs(fixedPairs, effectivePlayersCount, effectiveCourts);
+  const fixedPairsValidation = validateFixedPairs(fixedPairs, effectivePlayersCount);
 
   // --- ハンドラー ---
 
@@ -503,13 +502,6 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
                 ))}
               </Stack>
             )}
-
-            {/* 固定ペア警告メッセージ */}
-            {fixedPairsValidation.warnings?.map((warning, i) => (
-              <Alert severity="warning" sx={{ mt: 1 }} key={i}>
-                {warning}
-              </Alert>
-            ))}
 
             {/* プレイヤーグリッド（トグルまたはペア選択モード時に表示） */}
             {(showPlayerGrid || pairSelection.mode === 'selecting') && (

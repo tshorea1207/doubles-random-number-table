@@ -18,7 +18,6 @@ export interface FixedPair {
 export interface FixedPairsValidation {
   isValid: boolean;
   errorMessage?: string;
-  warnings?: string[];
 }
 
 /**
