@@ -245,7 +245,12 @@ export function ParticipantSettingsDialog({
       return { ...base, bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } };
     }
     if (isPendingRemove) {
-      return { ...base, textDecoration: 'line-through', opacity: 0.6, borderColor: 'error.main', color: 'error.main' };
+      return {
+        ...base,
+        opacity: 0.5,
+        borderColor: 'grey.400',
+        color: 'text.disabled',
+      };
     }
     if (isPendingAdd) {
       return { ...base, bgcolor: 'success.main', color: 'success.contrastText', '&:hover': { bgcolor: 'success.dark' } };
@@ -426,19 +431,29 @@ export function ParticipantSettingsDialog({
                 {pendingAdds.map(p => (
                   <Chip
                     key={`add-${p}`}
-                    label={`+ プレイヤー ${p}`}
-                    color="success"
-                    size="small"
+                    label={`+ ${p}`}
                     onDelete={() => setPendingAdds(prev => prev.filter(x => x !== p))}
+                    variant="outlined"
+                    sx={{
+                      borderColor: '#2e7d32',
+                      borderWidth: 2,
+                      color: '#2e7d32',
+                      fontWeight: 600,
+                    }}
                   />
                 ))}
                 {pendingRemoves.map(p => (
                   <Chip
                     key={`rm-${p}`}
-                    label={`- プレイヤー ${p}`}
-                    color="error"
-                    size="small"
+                    label={`- ${p}`}
                     onDelete={() => setPendingRemoves(prev => prev.filter(x => x !== p))}
+                    variant="outlined"
+                    sx={{
+                      borderColor: '#d32f2f',
+                      borderWidth: 2,
+                      color: '#d32f2f',
+                      fontWeight: 600,
+                    }}
                   />
                 ))}
               </Box>
