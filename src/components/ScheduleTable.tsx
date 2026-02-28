@@ -166,10 +166,19 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
   // ダイアログ内で表示するラウンドデータ（編集中なら編集版を使用）
   const displayRound = editedRound ?? selectedRound;
 
-  // プレイヤー番号タップ → スワップ選択ダイアログを開く
+  // プレイヤー番号タップ → 2タップでスワップ実行
   const handlePlayerTap = (playerNumber: number) => {
     if (!isSelectedRoundEditable) return;
-    setSwapTarget(playerNumber);
+    if (swapTarget === null) {
+      // 1人目選択
+      setSwapTarget(playerNumber);
+    } else if (swapTarget === playerNumber) {
+      // 同じプレイヤーを再タップ → 選択解除
+      setSwapTarget(null);
+    } else {
+      // 2人目選択 → スワップ実行
+      handleSwap(swapTarget, playerNumber);
+    }
   };
 
   // スワップ実行
@@ -537,7 +546,13 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                     borderRadius: 1,
                     "&:hover": { bgcolor: "rgba(0,0,0,0.08)" },
                   }),
-                  ...(changedPlayers.has(playerNum) && {
+                  ...(swapTarget === playerNum && {
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    borderRadius: 1,
+                    px: 0.5,
+                  }),
+                  ...(changedPlayers.has(playerNum) && swapTarget !== playerNum && {
                     outline: "2px solid",
                     outlineColor: "warning.main",
                     borderRadius: 1,
@@ -607,13 +622,18 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           sx={{
                             fontSize: "2rem",
                             fontWeight: 700,
-                            color: "text.secondary",
+                            color: swapTarget === p ? "primary.contrastText" : "text.secondary",
                             ...(isSelectedRoundEditable && {
                               cursor: "pointer",
                               borderRadius: 1,
                               "&:hover": { bgcolor: "rgba(0,0,0,0.08)" },
                             }),
-                            ...(changedPlayers.has(p) && {
+                            ...(swapTarget === p && {
+                              bgcolor: "primary.main",
+                              borderRadius: 1,
+                              px: 0.5,
+                            }),
+                            ...(changedPlayers.has(p) && swapTarget !== p && {
                               outline: "2px solid",
                               outlineColor: "warning.main",
                               borderRadius: 1,
@@ -653,14 +673,6 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
         )}
       </Dialog>
 
-      {/* プレイヤー番号選択グリッドダイアログ */}
-      <PlayerGridDialog
-        open={swapTarget !== null}
-        swapTarget={swapTarget}
-        activePlayers={schedule.activePlayers}
-        onSwap={handleSwap}
-        onClose={() => setSwapTarget(null)}
-      />
     </Paper>
   );
 }
