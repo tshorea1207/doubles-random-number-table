@@ -80,6 +80,29 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     }
   }, [players, fixedPairs, onFixedPairsChange]);
 
+  // スライダー変更時にpendingAdds/pendingRemovesを同期
+  useEffect(() => {
+    if (!schedule) return;
+    const currentActive = schedule.activePlayers;
+
+    const newAdds: number[] = [];
+    for (let i = 1; i <= players; i++) {
+      if (!currentActive.includes(i)) {
+        newAdds.push(i);
+      }
+    }
+
+    const newRemoves: number[] = [];
+    for (const p of currentActive) {
+      if (p > players) {
+        newRemoves.push(p);
+      }
+    }
+
+    setPendingAdds(newAdds);
+    setPendingRemoves(newRemoves);
+  }, [players, schedule]);
+
   // スケジュール変更時にpending stateをリセット
   useEffect(() => {
     if (schedule) {
