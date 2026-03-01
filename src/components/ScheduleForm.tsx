@@ -25,6 +25,16 @@ import { normalizeFixedPair, validateFixedPairs } from "../utils/fixedPairs";
 // 固定ペアの色（単色）
 const PAIR_COLOR = '#1565c0';
 
+// 設定の初期値
+const DEFAULTS: { courts: number; players: number; rounds: number; w1: number; w2: number; w3: number } = {
+  courts: 4,
+  players: 16,
+  rounds: 15,
+  w1: 1.0,
+  w2: 0.5,
+  w3: 2.0,
+};
+
 type PairSelectionState =
   | { mode: 'inactive' }
   | { mode: 'selecting'; firstPlayer: null }
@@ -46,12 +56,12 @@ interface ScheduleFormProps {
 }
 
 export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating, schedule, completedMatches, fixedPairs, onFixedPairsChange, speechPitch, onSpeechPitchChange, speechRate, onSpeechRateChange }: ScheduleFormProps) {
-  const [courts, setCourts] = useState(4);
-  const [players, setPlayers] = useState(16);
-  const [rounds, setRounds] = useState(15);
-  const [w1, setW1] = useState(1.0);
-  const [w2, setW2] = useState(0.5);
-  const [w3, setW3] = useState(2.0);
+  const [courts, setCourts] = useState(DEFAULTS.courts);
+  const [players, setPlayers] = useState(DEFAULTS.players);
+  const [rounds, setRounds] = useState(DEFAULTS.rounds);
+  const [w1, setW1] = useState(DEFAULTS.w1);
+  const [w2, setW2] = useState(DEFAULTS.w2);
+  const [w3, setW3] = useState(DEFAULTS.w3);
   const [helpTarget, setHelpTarget] = useState<"w1" | "w2" | "w3" | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -352,7 +362,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
       );
       onFixedPairsChange(newFixedPairs);
       onRegenerate({
-        courtsCount: schedule.courts,
+        courtsCount: courts,
         completedRounds: completedRoundsList,
         activePlayers: newActivePlayers,
         remainingRoundsCount: remainingRounds,
@@ -388,30 +398,56 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const restingCount = Math.max(0, players - courts * 4);
   const restingMessage = restingCount > 0 ? `毎ラウンド ${restingCount} 人が休憩` : "";
 
+  // 全設定を初期値にリセット
+  const handleClear = () => {
+    setCourts(DEFAULTS.courts);
+    setPlayers(DEFAULTS.players);
+    setRounds(DEFAULTS.rounds);
+    setW1(DEFAULTS.w1);
+    setW2(DEFAULTS.w2);
+    setW3(DEFAULTS.w3);
+    onFixedPairsChange([]);
+    onSpeechRateChange(1.0);
+    onSpeechPitchChange(1.0);
+    setPendingAdds([]);
+    setPendingRemoves([]);
+    setPairSelection({ mode: 'inactive' });
+    setShowPlayerGrid(false);
+  };
 
   return (
     <Paper sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: { xs: 1, sm: 2 } }}>
         <Typography variant="h6">スケジュール設定</Typography>
-        <Tooltip title="詳細設定">
-          <span>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<TuneIcon />}
-              onClick={() => setAdvancedOpen(true)}
-              disabled={isGenerating}
-              sx={{
-                minWidth: { xs: "auto", sm: undefined },
-                "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
-              }}
-            >
-              <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-                詳細設定
-              </Box>
-            </Button>
-          </span>
-        </Tooltip>
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={handleClear}
+            disabled={isGenerating}
+          >
+            クリア
+          </Button>
+          <Tooltip title="詳細設定">
+            <span>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<TuneIcon />}
+                onClick={() => setAdvancedOpen(true)}
+                disabled={isGenerating}
+                sx={{
+                  minWidth: { xs: "auto", sm: undefined },
+                  "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+                  詳細設定
+                </Box>
+              </Button>
+            </span>
+          </Tooltip>
+        </Box>
       </Box>
 
       <form onSubmit={handleSubmit}>
