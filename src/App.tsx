@@ -8,7 +8,7 @@ import { PlayerStatsTable } from "./components/PlayerStatsTable";
 import type { ScheduleParams, RegenerationParams, FixedPair, Round } from "./types/schedule";
 
 function App() {
-  const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel } = useScheduleGenerator();
+  const { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel, reset } = useScheduleGenerator();
   const displaySchedule = schedule ?? partialSchedule;
   const [completedMatches, setCompletedMatches] = useState<Set<string>>(new Set());
   const [openedAt, setOpenedAt] = useState<Record<string, Date>>({});
@@ -55,6 +55,16 @@ function App() {
       setOpenedAt({});
     }
   }, [isGenerating]);
+
+  const handleClear = useCallback(() => {
+    reset();
+    setCompletedMatches(new Set());
+    setOpenedAt({});
+    setLastParams(null);
+    setFixedPairs([]);
+    setSpeechRate(1.0);
+    setSpeechPitch(1.0);
+  }, [reset]);
 
   const handleGenerate = useCallback(
     (params: ScheduleParams) => {
@@ -125,6 +135,7 @@ function App() {
           onGenerate={handleGenerate}
           onRegenerate={handleRegenerate}
           onCancel={cancel}
+          onClear={handleClear}
           isGenerating={isGenerating}
           schedule={!isGenerating ? schedule : null}
           completedMatches={completedMatches}

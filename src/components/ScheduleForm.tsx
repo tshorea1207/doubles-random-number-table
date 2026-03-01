@@ -44,6 +44,7 @@ interface ScheduleFormProps {
   onGenerate: (params: ScheduleParams) => void;
   onRegenerate: (params: RegenerationParams) => void;
   onCancel: () => void;
+  onClear: () => void;
   isGenerating: boolean;
   schedule: Schedule | null;
   completedMatches: Set<string>;
@@ -55,7 +56,7 @@ interface ScheduleFormProps {
   onSpeechRateChange: (rate: number) => void;
 }
 
-export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating, schedule, completedMatches, fixedPairs, onFixedPairsChange, speechPitch, onSpeechPitchChange, speechRate, onSpeechRateChange }: ScheduleFormProps) {
+export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGenerating, schedule, completedMatches, fixedPairs, onFixedPairsChange, speechPitch, onSpeechPitchChange, speechRate, onSpeechRateChange }: ScheduleFormProps) {
   const [courts, setCourts] = useState(DEFAULTS.courts);
   const [players, setPlayers] = useState(DEFAULTS.players);
   const [rounds, setRounds] = useState(DEFAULTS.rounds);
@@ -439,13 +440,11 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     setW1(DEFAULTS.w1);
     setW2(DEFAULTS.w2);
     setW3(DEFAULTS.w3);
-    onFixedPairsChange([]);
-    onSpeechRateChange(1.0);
-    onSpeechPitchChange(1.0);
     setPendingAdds([]);
     setPendingRemoves([]);
     setPairSelection({ mode: 'inactive' });
     setShowPlayerGrid(false);
+    onClear();
   };
 
   return (

@@ -150,5 +150,14 @@ export function useScheduleGenerator(strategyId: StrategyId = DEFAULT_STRATEGY_I
     abortControllerRef.current?.abort();
   }, []);
 
-  return { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel };
+  const reset = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setSchedule(null);
+    setPartialSchedule(null);
+    setIsGenerating(false);
+    setProgress(null);
+    setError(null);
+  }, []);
+
+  return { schedule, isGenerating, progress, error, generate, regenerate, partialSchedule, cancel, reset };
 }
