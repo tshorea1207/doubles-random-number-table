@@ -297,7 +297,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (schedule && hasPendingChanges) {
+    if (schedule) {
       // 再生成パス: 消化済みラウンドを保持し、残りを再生成
       const newFixedPairs = fixedPairs.filter(
         fp => newActivePlayers.includes(fp.player1) && newActivePlayers.includes(fp.player2)
@@ -332,7 +332,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const errorMessage = !playersValid ? `参加人数は ${courts * 4} 人以上が必要です` : "";
 
   // 送信ボタンの有効/無効判定
-  const canSubmit = schedule && hasPendingChanges
+  const canSubmit = schedule
     ? (playersEnough && !isGenerating)
     : (isValid && !isGenerating);
 
