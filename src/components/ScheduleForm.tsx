@@ -210,49 +210,31 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
       return;
     }
 
-    const oldValue = players;
-    const delta = newValue - oldValue;
-    if (delta === 0) return;
+    // 絶対値ベースで pendingAdds / pendingRemoves を再計算
+    // currentActivePlayers と removedPlayers は schedule 由来で安定 → stale closure の影響なし
+    const activeCount = currentActivePlayers.length;
 
-    if (delta > 0) {
-      // 増加: 最大プレイヤー番号の次から追加
-      const allKnown = [...currentActivePlayers, ...pendingAdds, ...removedPlayers];
-      let nextNum = allKnown.length > 0 ? Math.max(...allKnown) + 1 : 1;
-      const toAdd: number[] = [];
-      for (let i = 0; i < delta; i++) {
-        toAdd.push(nextNum);
-        nextNum++;
+    if (newValue >= activeCount) {
+      // 全アクティブプレイヤーを維持 + 不足分を新規追加
+      setPendingRemoves([]);
+      const addsNeeded = newValue - activeCount;
+      if (addsNeeded === 0) {
+        setPendingAdds([]);
+      } else {
+        const allKnown = [...currentActivePlayers, ...removedPlayers];
+        let nextNum = allKnown.length > 0 ? Math.max(...allKnown) + 1 : 1;
+        const newAdds: number[] = [];
+        for (let i = 0; i < addsNeeded; i++) {
+          newAdds.push(nextNum++);
+        }
+        setPendingAdds(newAdds);
       }
-      setPendingAdds(prev => [...prev, ...toAdd]);
     } else {
-      // 減少: pendingAdds の大きい番号から優先削除、足りなければ currentActivePlayers を削除
-      let remaining = -delta;
-
-      const sortedAdds = [...pendingAdds].sort((a, b) => b - a);
-      const addsToRemove: number[] = [];
-      for (const p of sortedAdds) {
-        if (remaining <= 0) break;
-        addsToRemove.push(p);
-        remaining--;
-      }
-      if (addsToRemove.length > 0) {
-        setPendingAdds(prev => prev.filter(p => !addsToRemove.includes(p)));
-      }
-
-      if (remaining > 0) {
-        const activeNotRemoved = currentActivePlayers
-          .filter(p => !pendingRemoves.includes(p))
-          .sort((a, b) => b - a);
-        const toRemove: number[] = [];
-        for (const p of activeNotRemoved) {
-          if (remaining <= 0) break;
-          toRemove.push(p);
-          remaining--;
-        }
-        if (toRemove.length > 0) {
-          setPendingRemoves(prev => [...prev, ...toRemove]);
-        }
-      }
+      // アクティブプレイヤーから番号の大きい順に削除
+      setPendingAdds([]);
+      const removesNeeded = activeCount - newValue;
+      const sorted = [...currentActivePlayers].sort((a, b) => b - a);
+      setPendingRemoves(sorted.slice(0, removesNeeded));
     }
 
     setPlayers(newValue);
