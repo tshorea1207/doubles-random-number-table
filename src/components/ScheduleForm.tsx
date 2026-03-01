@@ -395,9 +395,10 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
   const errorMessage = !playersValid ? `参加人数は ${courts * 4} 人以上が必要です` : "";
 
   // 送信ボタンの有効/無効判定
+  const isPairSelecting = pairSelection.mode === 'selecting';
   const canSubmit = schedule
-    ? (playersEnough && !isGenerating)
-    : (isValid && !isGenerating);
+    ? (playersEnough && !isGenerating && !isPairSelecting)
+    : (isValid && !isGenerating && !isPairSelecting);
 
   // 休憩者数の計算
   const restingCount = Math.max(0, players - courts * 4);
@@ -526,7 +527,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
                 variant="outlined"
                 size="small"
                 onClick={() => setShowPlayerGrid(prev => !prev)}
-                disabled={isGenerating}
+                disabled={isGenerating || pairSelection.mode === 'selecting'}
               >
                 追加/削除
               </Button>
