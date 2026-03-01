@@ -194,7 +194,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
   // バリデーション
   const hasPendingChanges = pendingAdds.length > 0 || pendingRemoves.length > 0 || fixedPairsChanged;
-  const effectiveCourts = schedule?.courts ?? courts;
+  const effectiveCourts = courts;
   const playersEnough = newActivePlayers.length >= effectiveCourts * 4;
 
   // 次のプレイヤー番号
