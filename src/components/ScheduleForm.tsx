@@ -64,6 +64,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const [w3, setW3] = useState(DEFAULTS.w3);
   const [helpTarget, setHelpTarget] = useState<"w1" | "w2" | "w3" | null>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   // 参加者管理state（ParticipantSettingsDialogから移植）
   const [pendingAdds, setPendingAdds] = useState<number[]>([]);
@@ -446,8 +447,10 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
           <Button
             variant="outlined"
             size="small"
-            onClick={handleClear}
+            color="error"
+            onClick={() => setClearConfirmOpen(true)}
             disabled={isGenerating}
+            sx={{ height: 36 }}
           >
             クリア
           </Button>
@@ -460,6 +463,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
                 onClick={() => setAdvancedOpen(true)}
                 disabled={isGenerating}
                 sx={{
+                  height: 36,
                   minWidth: { xs: "auto", sm: undefined },
                   "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
                 }}
@@ -652,6 +656,27 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
           </Grid>
         </Grid>
       </form>
+
+      {/* クリア確認ダイアログ */}
+      <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)}>
+        <DialogTitle>設定のリセット</DialogTitle>
+        <DialogContent>
+          <Typography>すべての設定を初期値にリセットしますか？</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearConfirmOpen(false)}>キャンセル</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              handleClear();
+              setClearConfirmOpen(false);
+            }}
+          >
+            リセット
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* 詳細設定ダイアログ */}
       <Dialog open={advancedOpen} onClose={() => setAdvancedOpen(false)} maxWidth="sm" fullWidth>
