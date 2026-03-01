@@ -559,26 +559,6 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
               )}
             </Box>
 
-            {/* 固定ペアチップ（常に表示） */}
-            {fixedPairs.length > 0 && (
-              <Stack direction="row" sx={{ mb: 1, flexWrap: 'wrap', gap: 1 }}>
-                {fixedPairs.map((pair, index) => (
-                  <Chip
-                    key={index}
-                    label={`${pair.player1} & ${pair.player2}`}
-                    onDelete={() => handleRemoveFixedPair(index)}
-                    variant="outlined"
-                    sx={{
-                      borderColor: PAIR_COLOR,
-                      borderWidth: 2,
-                      color: PAIR_COLOR,
-                      fontWeight: 600,
-                    }}
-                  />
-                ))}
-              </Stack>
-            )}
-
             {/* プレイヤーグリッド（トグルまたはペア選択モード時に表示） */}
             {(showPlayerGrid || pairSelection.mode === 'selecting') && (
               <Box sx={{ mt: 1 }}>
@@ -617,6 +597,25 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
                   </Typography>
                 )}
               </Box>
+            )}
+
+            {/* 固定ペアチップ（常に表示） */}
+            {fixedPairs.length > 0 && (
+              <Stack direction="row" sx={{ mt: 1, flexWrap: 'wrap', gap: 1 }}>
+                {fixedPairs.map((pair, index) => (
+                  <Chip
+                    key={index}
+                    label={`${pair.player1} & ${pair.player2}`}
+                    onDelete={() => handleRemoveFixedPair(index)}
+                    variant="outlined"
+                    sx={{
+                      borderColor: PAIR_COLOR,
+                      color: PAIR_COLOR,
+                      fontWeight: 600,
+                    }}
+                  />
+                ))}
+              </Stack>
             )}
 
           </Grid>
