@@ -429,7 +429,6 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
             color="error"
             onClick={() => setClearConfirmOpen(true)}
             disabled={isGenerating}
-            sx={{ height: 36 }}
           >
             クリア
           </Button>
@@ -442,7 +441,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
                 onClick={() => setAdvancedOpen(true)}
                 disabled={isGenerating}
                 sx={{
-                  height: 36,
+                  height: "100%",
                   minWidth: { xs: "auto", sm: undefined },
                   "& .MuiButton-startIcon": { mr: { xs: 0, sm: 1 } },
                 }}
