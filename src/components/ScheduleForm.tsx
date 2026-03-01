@@ -61,43 +61,22 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const [pairSelection, setPairSelection] = useState<PairSelectionState>({ mode: 'inactive' });
   const [showPlayerGrid, setShowPlayerGrid] = useState(false);
 
-  // 参加人数変更時に無効な固定ペアを削除
+  // 参加人数変更時に無効な固定ペアを削除（生成後は handleSubmit でフィルタするためスキップ）
   useEffect(() => {
+    if (schedule) return;
     const validPairs = fixedPairs.filter((fp) => fp.player1 <= players && fp.player2 <= players);
     if (validPairs.length !== fixedPairs.length) {
       onFixedPairsChange(validPairs);
     }
-  }, [players, fixedPairs, onFixedPairsChange]);
+  }, [players, schedule, fixedPairs, onFixedPairsChange]);
 
-  // スライダー変更時にpendingAdds/pendingRemovesを同期
-  useEffect(() => {
-    if (!schedule) return;
-    const currentActive = schedule.activePlayers;
-
-    const newAdds: number[] = [];
-    for (let i = 1; i <= players; i++) {
-      if (!currentActive.includes(i)) {
-        newAdds.push(i);
-      }
-    }
-
-    const newRemoves: number[] = [];
-    for (const p of currentActive) {
-      if (p > players) {
-        newRemoves.push(p);
-      }
-    }
-
-    setPendingAdds(newAdds);
-    setPendingRemoves(newRemoves);
-  }, [players, schedule]);
-
-  // スケジュール変更時にpending stateをリセット
+  // スケジュール変更時にpending stateをリセットし、スライダーを同期
   useEffect(() => {
     if (schedule) {
       setPendingAdds([]);
       setPendingRemoves([]);
       setPairSelection({ mode: 'inactive' });
+      setPlayers(schedule.activePlayers.length);
     }
   }, [schedule]);
 
@@ -194,6 +173,63 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
   // --- ハンドラー ---
 
+  // スライダー変更: 生成前は単純に値を設定、生成後は差分で pendingAdds/pendingRemoves を調整
+  const handlePlayersSliderChange = (_: Event, value: number | number[]) => {
+    const newValue = value as number;
+
+    if (!schedule) {
+      setPlayers(newValue);
+      return;
+    }
+
+    const oldValue = players;
+    const delta = newValue - oldValue;
+    if (delta === 0) return;
+
+    if (delta > 0) {
+      // 増加: 最大プレイヤー番号の次から追加
+      const allKnown = [...currentActivePlayers, ...pendingAdds];
+      let nextNum = allKnown.length > 0 ? Math.max(...allKnown) + 1 : 1;
+      const toAdd: number[] = [];
+      for (let i = 0; i < delta; i++) {
+        toAdd.push(nextNum);
+        nextNum++;
+      }
+      setPendingAdds(prev => [...prev, ...toAdd]);
+    } else {
+      // 減少: pendingAdds の大きい番号から優先削除、足りなければ currentActivePlayers を削除
+      let remaining = -delta;
+
+      const sortedAdds = [...pendingAdds].sort((a, b) => b - a);
+      const addsToRemove: number[] = [];
+      for (const p of sortedAdds) {
+        if (remaining <= 0) break;
+        addsToRemove.push(p);
+        remaining--;
+      }
+      if (addsToRemove.length > 0) {
+        setPendingAdds(prev => prev.filter(p => !addsToRemove.includes(p)));
+      }
+
+      if (remaining > 0) {
+        const activeNotRemoved = currentActivePlayers
+          .filter(p => !pendingRemoves.includes(p))
+          .sort((a, b) => b - a);
+        const toRemove: number[] = [];
+        for (const p of activeNotRemoved) {
+          if (remaining <= 0) break;
+          toRemove.push(p);
+          remaining--;
+        }
+        if (toRemove.length > 0) {
+          setPendingRemoves(prev => [...prev, ...toRemove]);
+        }
+      }
+    }
+
+    setPlayers(newValue);
+  };
+
   const handlePlayerTap = (player: number) => {
     if (pairSelection.mode === 'selecting') {
       handlePairSelectionTap(player);
@@ -205,10 +241,13 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
     if (pendingAdds.includes(player)) {
       setPendingAdds(prev => prev.filter(p => p !== player));
+      setPlayers(prev => prev - 1);
     } else if (pendingRemoves.includes(player)) {
       setPendingRemoves(prev => prev.filter(p => p !== player));
+      setPlayers(prev => prev + 1);
     } else if (currentActivePlayers.includes(player)) {
       setPendingRemoves(prev => [...prev, player]);
+      setPlayers(prev => prev - 1);
     }
   };
 
@@ -231,6 +270,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
   const handleAddPlayer = () => {
     setPendingAdds(prev => [...prev, nextPlayerNumber]);
+    setPlayers(prev => prev + 1);
   };
 
   const handleRemoveFixedPair = (index: number) => {
@@ -409,7 +449,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
               </Typography>
               <Slider
                 value={players}
-                onChange={(_, value) => setPlayers(value as number)}
+                onChange={handlePlayersSliderChange}
                 min={4}
                 max={32}
                 step={1}
