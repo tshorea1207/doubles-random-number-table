@@ -183,18 +183,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
   const totalRounds = schedule?.rounds.length ?? 0;
   const remainingRounds = totalRounds - completedCount;
 
-  // 固定ペアの変更検知
-  const fixedPairsChanged = useMemo(() => {
-    if (!schedule) return false;
-    const orig = schedule.fixedPairs;
-    if (orig.length !== fixedPairs.length) return true;
-    return orig.some((fp, i) =>
-      fp.player1 !== fixedPairs[i]?.player1 || fp.player2 !== fixedPairs[i]?.player2
-    );
-  }, [schedule, fixedPairs]);
-
   // バリデーション
-  const hasPendingChanges = pendingAdds.length > 0 || pendingRemoves.length > 0 || fixedPairsChanged;
   const effectiveCourts = courts;
   const playersEnough = newActivePlayers.length >= effectiveCourts * 4;
 
