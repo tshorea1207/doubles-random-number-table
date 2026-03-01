@@ -147,6 +147,14 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     return new Set(activePlayers.filter(p => !usedInPairs.has(p)));
   }, [fixedPairs, schedule, currentActivePlayers, pendingAdds, pendingRemoves, players]);
 
+  // 選択可能プレイヤーが2人未満になったらペア選択モードを自動終了
+  useEffect(() => {
+    if (pairSelection.mode === 'selecting' && pairSelectablePlayers.size < 2) {
+      setPairSelection({ mode: 'inactive' });
+      setShowPlayerGrid(false);
+    }
+  }, [pairSelection.mode, pairSelectablePlayers.size]);
+
   // 消化済みラウンド
   const completedRoundsList = useMemo(() => {
     if (!schedule) return [];
@@ -216,8 +224,8 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     } else {
       const newPair = normalizeFixedPair(pairSelection.firstPlayer, player);
       onFixedPairsChange([...fixedPairs, newPair]);
-      setPairSelection({ mode: 'inactive' });
-      setShowPlayerGrid(false);
+      // 選択モードを維持し、次のペア選択に備える
+      setPairSelection({ mode: 'selecting', firstPlayer: null });
     }
   };
 
@@ -441,7 +449,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
               >
                 追加/削除
               </Button>
-              {pairSelectablePlayers.size >= 2 && pairSelection.mode === 'inactive' && (
+              {pairSelection.mode === 'inactive' && (
                 <Button
                   variant="outlined"
                   size="small"
@@ -449,7 +457,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
                     setPairSelection({ mode: 'selecting', firstPlayer: null });
                     setShowPlayerGrid(true);
                   }}
-                  disabled={isGenerating}
+                  disabled={isGenerating || pairSelectablePlayers.size < 2}
                 >
                   固定ペア
                 </Button>
@@ -464,7 +472,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
                     setShowPlayerGrid(false);
                   }}
                 >
-                  キャンセル
+                  OK
                 </Button>
               )}
             </Box>
