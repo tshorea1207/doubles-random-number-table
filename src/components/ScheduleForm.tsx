@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, FormEvent } from "react";
+import { useState, useEffect, useMemo, useRef, FormEvent } from "react";
 import {
   Box,
   Slider,
@@ -71,6 +71,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const [pendingRemoves, setPendingRemoves] = useState<number[]>([]);
   const [pairSelection, setPairSelection] = useState<PairSelectionState>({ mode: 'inactive' });
   const [showPlayerGrid, setShowPlayerGrid] = useState(false);
+  const prevActivePlayersRef = useRef<number[] | null>(null);
 
   // 参加人数変更時に無効な固定ペアを削除（生成後は handleSubmit でフィルタするためスキップ）
   useEffect(() => {
@@ -81,13 +82,21 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     }
   }, [players, schedule, fixedPairs, onFixedPairsChange]);
 
-  // スケジュール変更時にpending stateをリセットし、スライダーを同期
+  // スケジュール変更時: activePlayersが変化した場合のみpending stateをリセット
   useEffect(() => {
     if (schedule) {
-      setPendingAdds([]);
-      setPendingRemoves([]);
-      setPairSelection({ mode: 'inactive' });
-      setPlayers(schedule.activePlayers.length);
+      const prev = prevActivePlayersRef.current;
+      const activePlayersChanged = !prev ||
+        prev.length !== schedule.activePlayers.length ||
+        prev.some((p, i) => p !== schedule.activePlayers[i]);
+
+      if (activePlayersChanged) {
+        setPendingAdds([]);
+        setPendingRemoves([]);
+        setPairSelection({ mode: 'inactive' });
+        setPlayers(schedule.activePlayers.length);
+      }
+      prevActivePlayersRef.current = schedule.activePlayers;
     }
   }, [schedule]);
 
