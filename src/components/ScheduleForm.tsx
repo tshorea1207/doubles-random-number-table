@@ -94,14 +94,32 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
   const currentActivePlayers = schedule?.activePlayers ?? [];
 
+  // スケジュール再生成後に離脱したプレイヤーを検出
+  const removedPlayers = useMemo(() => {
+    if (!schedule) return [];
+    const activeSet = new Set(schedule.activePlayers);
+    const allKnown = new Set<number>();
+    for (let p = 1; p <= schedule.players; p++) allKnown.add(p);
+    for (const round of schedule.rounds) {
+      for (const match of round.matches) {
+        allKnown.add(match.pairA.player1);
+        allKnown.add(match.pairA.player2);
+        allKnown.add(match.pairB.player1);
+        allKnown.add(match.pairB.player2);
+      }
+      for (const p of round.restingPlayers) allKnown.add(p);
+    }
+    return [...allKnown].filter(p => !activeSet.has(p)).sort((a, b) => a - b);
+  }, [schedule]);
+
   // グリッドに表示するプレイヤー一覧
   const gridPlayers = useMemo(() => {
     if (schedule) {
-      const all = [...currentActivePlayers, ...pendingAdds];
+      const all = [...currentActivePlayers, ...pendingAdds, ...removedPlayers];
       return [...new Set(all)].sort((a, b) => a - b);
     }
     return Array.from({ length: players }, (_, i) => i + 1);
-  }, [schedule, currentActivePlayers, players, pendingAdds]);
+  }, [schedule, currentActivePlayers, players, pendingAdds, removedPlayers]);
 
   // 変更適用後のアクティブプレイヤー
   const newActivePlayers = useMemo(() => {
@@ -171,13 +189,13 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
   // 次のプレイヤー番号
   const nextPlayerNumber = useMemo(() => {
-    const allKnown = [...currentActivePlayers, ...pendingAdds];
+    const allKnown = [...currentActivePlayers, ...pendingAdds, ...removedPlayers];
     return allKnown.length > 0 ? Math.max(...allKnown) + 1 : 1;
-  }, [currentActivePlayers, pendingAdds]);
+  }, [currentActivePlayers, pendingAdds, removedPlayers]);
 
   // 固定ペアバリデーション
   const effectivePlayersCount = schedule
-    ? Math.max(...currentActivePlayers, ...pendingAdds, 0)
+    ? Math.max(...currentActivePlayers, ...pendingAdds, ...removedPlayers, 0)
     : players;
   const fixedPairsValidation = validateFixedPairs(fixedPairs, effectivePlayersCount);
 
@@ -198,7 +216,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
 
     if (delta > 0) {
       // 増加: 最大プレイヤー番号の次から追加
-      const allKnown = [...currentActivePlayers, ...pendingAdds];
+      const allKnown = [...currentActivePlayers, ...pendingAdds, ...removedPlayers];
       let nextNum = allKnown.length > 0 ? Math.max(...allKnown) + 1 : 1;
       const toAdd: number[] = [];
       for (let i = 0; i < delta; i++) {
@@ -258,6 +276,10 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     } else if (currentActivePlayers.includes(player)) {
       setPendingRemoves(prev => [...prev, player]);
       setPlayers(prev => prev - 1);
+    } else if (removedPlayers.includes(player)) {
+      // 離脱したプレイヤーの復帰
+      setPendingAdds(prev => [...prev, player]);
+      setPlayers(prev => prev + 1);
     }
   };
 
@@ -292,6 +314,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
   const getButtonSx = (player: number) => {
     const isPendingRemove = pendingRemoves.includes(player);
     const isPendingAdd = pendingAdds.includes(player);
+    const isRemoved = removedPlayers.includes(player);
     const pairIndex = playerPairMap.get(player);
     const isInPair = pairIndex !== undefined;
     const isFirstSelected = pairSelection.mode === 'selecting'
@@ -310,7 +333,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, isGenerating,
     if (isFirstSelected) {
       return { ...base, bgcolor: 'primary.main', color: 'primary.contrastText', '&:hover': { bgcolor: 'primary.dark' } };
     }
-    if (isPendingRemove) {
+    if (isPendingRemove || isRemoved) {
       return {
         ...base,
         opacity: 0.5,
