@@ -564,7 +564,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
               <Box sx={{ mt: 1 }}>
 
                 {/* 5列グリッド */}
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 1, pt: 0.5 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, pt: 0.5 }}>
                   {gridPlayers.map(p => (
                     <Button
                       key={p}
