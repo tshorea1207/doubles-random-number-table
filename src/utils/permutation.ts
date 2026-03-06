@@ -187,6 +187,11 @@ export function* generateRestingCandidates(
 
   const prevRestSet = new Set(previousRestingPlayers ?? []);
 
+  // restCount >= 半数の場合、連続休憩フィルタはグループ分離を引き起こすため無効化。
+  if (restCount >= allPlayers.length / 2) {
+    prevRestSet.clear();
+  }
+
   // 基本候補生成（既存のハイブリッド/全探索ロジック）
   function* generateBase(): Generator<number[]> {
     // allPlayers のプレイヤーのみの休憩回数を参照（非連続プレイヤー番号対応）

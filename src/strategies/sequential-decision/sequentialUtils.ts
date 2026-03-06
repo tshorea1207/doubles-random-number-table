@@ -46,6 +46,13 @@ export function selectRestingPlayers(
   if (restCount === 0) return [];
 
   const prevRestSet = new Set(previousRestingPlayers ?? []);
+
+  // restCount >= 半数の場合、連続休憩回避は数学的に不可能。
+  // ペナルティ適用はグループ分離を引き起こすため無効化する。
+  if (restCount >= allPlayers.length / 2) {
+    prevRestSet.clear();
+  }
+
   const activeFixedPairs = (fixedPairs ?? []).filter(
     fp => allPlayers.includes(fp.player1) && allPlayers.includes(fp.player2)
   );
