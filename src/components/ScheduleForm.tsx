@@ -129,16 +129,21 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
       const all = [...currentActivePlayers, ...pendingAdds, ...removedPlayers];
       return [...new Set(all)].sort((a, b) => a - b);
     }
-    return Array.from({ length: players }, (_, i) => i + 1);
+    const base = Array.from({ length: players }, (_, i) => i + 1);
+    const all = [...base, ...pendingAdds];
+    return [...new Set(all)].sort((a, b) => a - b);
   }, [schedule, currentActivePlayers, players, pendingAdds, removedPlayers]);
 
   // 変更適用後のアクティブプレイヤー
   const newActivePlayers = useMemo(() => {
+    const base = schedule
+      ? currentActivePlayers
+      : Array.from({ length: players }, (_, i) => i + 1);
     return [
-      ...currentActivePlayers.filter(p => !pendingRemoves.includes(p)),
+      ...base.filter(p => !pendingRemoves.includes(p)),
       ...pendingAdds,
     ].sort((a, b) => a - b);
-  }, [currentActivePlayers, pendingAdds, pendingRemoves]);
+  }, [schedule, currentActivePlayers, players, pendingAdds, pendingRemoves]);
 
   // プレイヤー → 固定ペアインデックスのマップ（色分け用）
   const playerPairMap = useMemo(() => {
@@ -189,14 +194,16 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
 
   // 次のプレイヤー番号
   const nextPlayerNumber = useMemo(() => {
-    const allKnown = [...currentActivePlayers, ...pendingAdds, ...removedPlayers];
+    const allKnown = schedule
+      ? [...currentActivePlayers, ...pendingAdds, ...removedPlayers]
+      : [...Array.from({ length: players }, (_, i) => i + 1), ...pendingAdds];
     return allKnown.length > 0 ? Math.max(...allKnown) + 1 : 1;
-  }, [currentActivePlayers, pendingAdds, removedPlayers]);
+  }, [schedule, currentActivePlayers, pendingAdds, removedPlayers, players]);
 
   // 固定ペアバリデーション
   const effectivePlayersCount = schedule
     ? Math.max(...currentActivePlayers, ...pendingAdds, ...removedPlayers, 0)
-    : players;
+    : Math.max(...gridPlayers, 0);
   const fixedPairsValidation = validateFixedPairs(fixedPairs, effectivePlayersCount);
 
   // --- ハンドラー ---
@@ -207,6 +214,8 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
 
     if (!schedule) {
       setPlayers(newValue);
+      setPendingAdds([]);
+      setPendingRemoves([]);
       return;
     }
 
@@ -246,8 +255,18 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
       return;
     }
 
-    // 生成前はグリッドは参加者トグル不可
-    if (!schedule) return;
+    if (!schedule) {
+      // 生成前: pendingAdds/pendingRemoves でトグル
+      const basePlayers = Array.from({ length: players }, (_, i) => i + 1);
+      if (pendingAdds.includes(player)) {
+        setPendingAdds(prev => prev.filter(p => p !== player));
+      } else if (pendingRemoves.includes(player)) {
+        setPendingRemoves(prev => prev.filter(p => p !== player));
+      } else if (basePlayers.includes(player)) {
+        setPendingRemoves(prev => [...prev, player]);
+      }
+      return;
+    }
 
     if (pendingAdds.includes(player)) {
       setPendingAdds(prev => prev.filter(p => p !== player));
@@ -284,7 +303,9 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
 
   const handleAddPlayer = () => {
     setPendingAdds(prev => [...prev, nextPlayerNumber]);
-    setPlayers(prev => prev + 1);
+    if (schedule) {
+      setPlayers(prev => prev + 1);
+    }
   };
 
   const handleRemoveFixedPair = (index: number) => {
@@ -352,7 +373,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
       && pairSelection.firstPlayer === player;
 
     if (isInPairSelectionMode && !isSelectableForPair && !isFirstSelected) return true;
-    if (!schedule && pairSelection.mode === 'inactive') return true;
+    if (!schedule && pairSelection.mode === 'inactive' && !showPlayerGrid) return true;
     return false;
   };
 
@@ -379,18 +400,27 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
       setPairSelection({ mode: 'inactive' });
     } else {
       // 新規生成パス
+      const effectiveCount = newActivePlayers.length;
+      const newFixedPairs = fixedPairs.filter(
+        fp => newActivePlayers.includes(fp.player1) && newActivePlayers.includes(fp.player2)
+      );
+      if (newFixedPairs.length !== fixedPairs.length) {
+        onFixedPairsChange(newFixedPairs);
+      }
       onGenerate({
         courtsCount: courts,
-        playersCount: players,
+        playersCount: effectiveCount,
         roundsCount: rounds,
         weights: { w1, w2, w3 },
-        fixedPairs,
+        fixedPairs: newFixedPairs,
       });
+      setPendingAdds([]);
+      setPendingRemoves([]);
     }
   };
 
   // バリデーション
-  const playersValid = players >= courts * 4;
+  const playersValid = newActivePlayers.length >= courts * 4;
   const isValid = playersValid && fixedPairsValidation.isValid;
   const errorMessage = !playersValid ? `参加人数は ${courts * 4} 人以上が必要です` : "";
 
@@ -400,7 +430,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
     : (isValid && !isGenerating);
 
   // 休憩者数の計算
-  const restingCount = Math.max(0, players - courts * 4);
+  const restingCount = Math.max(0, newActivePlayers.length - courts * 4);
   const restingMessage = restingCount > 0 ? `毎ラウンド ${restingCount} 人が休憩` : "";
 
   // 全設定を初期値にリセット
@@ -486,10 +516,10 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
           <Grid item xs={12} sm={6} order={{ xs: 2, sm: 2 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 2, pb: 2.5 }}>
               <Typography sx={{ whiteSpace: "nowrap", minWidth: "7em" }}>
-                参加人数: {players}
+                参加人数: {newActivePlayers.length}
               </Typography>
               <Slider
-                value={players}
+                value={newActivePlayers.length}
                 onChange={handlePlayersSliderChange}
                 min={4}
                 max={32}
@@ -566,8 +596,8 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
                       {p}
                     </Button>
                   ))}
-                  {/* 追加ボタン（生成後のみ） */}
-                  {schedule && pairSelection.mode === 'inactive' && (
+                  {/* 追加ボタン */}
+                  {pairSelection.mode === 'inactive' && (
                     <Button
                       variant="outlined"
                       color="success"
@@ -580,8 +610,8 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
                   )}
                 </Box>
 
-                {/* 生成後: タップでトグルの説明 */}
-                {schedule && pairSelection.mode === 'inactive' && (
+                {/* タップでトグルの説明 */}
+                {pairSelection.mode === 'inactive' && (
                   <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
                     タップで参加/不参加を切り替え
                   </Typography>
