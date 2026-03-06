@@ -395,10 +395,9 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
   const errorMessage = !playersValid ? `参加人数は ${courts * 4} 人以上が必要です` : "";
 
   // 送信ボタンの有効/無効判定
-  const isPairSelecting = pairSelection.mode === 'selecting';
   const canSubmit = schedule
-    ? (playersEnough && !isGenerating && !isPairSelecting)
-    : (isValid && !isGenerating && !isPairSelecting);
+    ? (playersEnough && !isGenerating)
+    : (isValid && !isGenerating);
 
   // 休憩者数の計算
   const restingCount = Math.max(0, players - courts * 4);
@@ -531,32 +530,23 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
               >
                 追加/削除
               </Button>
-              {pairSelection.mode === 'inactive' && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => {
-                    setPairSelection({ mode: 'selecting', firstPlayer: null });
-                    setShowPlayerGrid(true);
-                  }}
-                  disabled={isGenerating || pairSelectablePlayers.size < 2}
-                >
-                  固定ペア
-                </Button>
-              )}
-              {pairSelection.mode === 'selecting' && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="secondary"
-                  onClick={() => {
+              <Button
+                variant="outlined"
+                size="small"
+                color={pairSelection.mode === 'selecting' ? 'secondary' : 'primary'}
+                onClick={() => {
+                  if (pairSelection.mode === 'selecting') {
                     setPairSelection({ mode: 'inactive' });
                     setShowPlayerGrid(false);
-                  }}
-                >
-                  OK
-                </Button>
-              )}
+                  } else {
+                    setPairSelection({ mode: 'selecting', firstPlayer: null });
+                    setShowPlayerGrid(true);
+                  }
+                }}
+                disabled={pairSelection.mode === 'inactive' && (isGenerating || pairSelectablePlayers.size < 2 || showPlayerGrid)}
+              >
+                固定ペア
+              </Button>
             </Box>
 
             {/* プレイヤーグリッド（トグルまたはペア選択モード時に表示） */}
