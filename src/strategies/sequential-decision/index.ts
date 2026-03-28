@@ -172,7 +172,15 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       throw new Error(`参加者数（${activePlayers.length}人）がコート数（${courtsCount}面）に必要な${courtsCount * 4}人を下回っています`);
     }
 
-    const maxPlayerNumber = Math.max(...activePlayers);
+    let maxPlayerNumber = Math.max(...activePlayers);
+    for (const round of completedRounds) {
+      for (const match of round.matches) {
+        maxPlayerNumber = Math.max(maxPlayerNumber, match.pairA.player1, match.pairA.player2, match.pairB.player1, match.pairB.player2);
+      }
+      for (const player of round.restingPlayers) {
+        maxPlayerNumber = Math.max(maxPlayerNumber, player);
+      }
+    }
     const allRounds: Round[] = [...completedRounds];
 
     // 完了済みラウンドから履歴を再構築
