@@ -659,7 +659,7 @@ export function ScheduleForm({ onGenerate, onRegenerate, onCancel, onClear, isGe
       <Dialog open={clearConfirmOpen} onClose={() => setClearConfirmOpen(false)}>
         <DialogTitle>設定のリセット</DialogTitle>
         <DialogContent>
-          <Typography>すべての設定を初期値にリセットしますか？</Typography>
+          <Typography>スケジュール設定と生成結果をリセットしますか？</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setClearConfirmOpen(false)}>キャンセル</Button>
