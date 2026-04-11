@@ -525,9 +525,9 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
       <Dialog
         open={selectedRound !== null}
         onClose={handleDialogClose}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
-        slotProps={{ paper: { sx: { mx: { xs: 1, sm: 4 }, ...(isOverdue && { bgcolor: scheduleColors.dialogOverdue }) } } }}
+        slotProps={{ paper: { sx: { mx: { xs: 1, sm: 4, md: 2 }, ...(isOverdue && { bgcolor: scheduleColors.dialogOverdue }) } } }}
       >
         {selectedRound && displayRound && (
           <>
@@ -539,7 +539,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                 </Typography>
               )}
             </DialogTitle>
-            <DialogContent sx={{ px: { xs: 1.5, sm: 3 } }}>
+            <DialogContent sx={{ px: { xs: 1.5, sm: 3, md: 4 } }}>
               {displayRound.matches.map((match, idx) => {
                 const playerNumberSx = (playerNum: number) => ({
                   display: "inline-block",
@@ -576,9 +576,9 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           flex: 1,
                           bgcolor: scheduleColors.teamA,
                           borderRadius: 2,
-                          px: { xs: 1, sm: 1.5 },
+                          px: { xs: 1, sm: 1.5, md: 2.5 },
                           py: 0.5,
-                          fontSize: "clamp(2.5rem, 8vw, 4rem)",
+                          fontSize: "clamp(2.5rem, 10vw, 6rem)",
                           fontWeight: 700,
                           textAlign: "center",
                           whiteSpace: "nowrap",
@@ -595,9 +595,9 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           flex: 1,
                           bgcolor: scheduleColors.teamB,
                           borderRadius: 2,
-                          px: { xs: 1, sm: 1.5 },
+                          px: { xs: 1, sm: 1.5, md: 2.5 },
                           py: 0.5,
-                          fontSize: "clamp(2.5rem, 8vw, 4rem)",
+                          fontSize: "clamp(2.5rem, 10vw, 6rem)",
                           fontWeight: 700,
                           textAlign: "center",
                           whiteSpace: "nowrap",
@@ -624,7 +624,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           component="span"
                           onClick={isSelectedRoundEditable ? (e: React.MouseEvent) => { e.stopPropagation(); handlePlayerTap(p); } : undefined}
                           sx={{
-                            fontSize: "2rem",
+                            fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
                             fontWeight: 700,
                             color: swapTarget === p ? "primary.contrastText" : "text.secondary",
                             ...(isSelectedRoundEditable && {
@@ -647,7 +647,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           {p}
                         </Typography>
                         {i < displayRound.restingPlayers.length - 1 && (
-                          <Typography component="span" sx={{ fontSize: "2rem", fontWeight: 700, color: "text.secondary", mx: 0.25 }}>
+                          <Typography component="span" sx={{ fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" }, fontWeight: 700, color: "text.secondary", mx: 0.25 }}>
                             ,
                           </Typography>
                         )}
