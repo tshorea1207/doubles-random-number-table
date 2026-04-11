@@ -548,7 +548,6 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                   ...(isSelectedRoundEditable && {
                     cursor: "pointer",
                     borderRadius: 1,
-                    "&:hover": { bgcolor: "rgba(0,0,0,0.08)" },
                   }),
                   ...(swapTarget === playerNum && {
                     bgcolor: "primary.main",
@@ -630,7 +629,6 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                             ...(isSelectedRoundEditable && {
                               cursor: "pointer",
                               borderRadius: 1,
-                              "&:hover": { bgcolor: "rgba(0,0,0,0.08)" },
                             }),
                             ...(swapTarget === p && {
                               bgcolor: "primary.main",
