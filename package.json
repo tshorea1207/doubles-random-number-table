@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:bench": "vitest bench",
-    "test:bench:run": "vitest bench --run"
+    "test:bench:run": "vitest bench --run",
+    "analyze": "vitest run --config vitest.scripts.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
