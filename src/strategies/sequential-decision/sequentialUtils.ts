@@ -593,3 +593,101 @@ export function buildNormalizedMatches(
 
   return matches;
 }
+
+// === Phase 3: 不要なペア重複修正 ===
+
+/**
+ * 不要なペア重複の数を数える
+ *
+ * ペア (p, q) が以下の条件を満たす場合「不要な重複ペア」とみなす:
+ * - pairHistory[p-1][q-1] > 0（既にペアになったことがある）
+ * - かつ playingPlayers にまだ p とペアを組んでいないプレイヤー r が存在する
+ *
+ * @param courtAssignments - 各コートの [p1, p2, p3, p4] 配列
+ * @param pairHistory - ペア履歴行列
+ * @param playingPlayers - 今ラウンドでプレイするプレイヤー（休憩者を除く）
+ * @returns 不要な重複ペアの総数
+ */
+export function countUnnecessaryRepeatPairs(
+  courtAssignments: [number, number, number, number][],
+  pairHistory: CountMatrix,
+  playingPlayers: number[],
+): number {
+  let violations = 0;
+  for (const [p1, p2, p3, p4] of courtAssignments) {
+    for (const [p, q] of [[p1, p2], [p3, p4]] as [number, number][]) {
+      if (pairHistory[p - 1][q - 1] > 0) {
+        const hasUnpairedPartner = playingPlayers.some(
+          r => r !== p && r !== q && pairHistory[p - 1][r - 1] === 0
+        );
+        if (hasUnpairedPartner) violations++;
+      }
+    }
+  }
+  return violations;
+}
+
+/**
+ * Phase 3: コート内ペアリングを再配置して不要な重複ペアを削減する
+ *
+ * 各コートの4人はそのまま維持し、ペアリングのみ変更する。
+ * 3^C の全組み合わせを列挙し、最も違反の少ない組み合わせを返す。
+ * タイブレークはペア履歴カウントの合計（小さい方が優先）。
+ * 改善なしの場合は null を返す。
+ *
+ * @param courtAssignments - 各コートの [p1, p2, p3, p4] 配列
+ * @param pairHistory - ペア履歴行列
+ * @param playingPlayers - 今ラウンドでプレイするプレイヤー（休憩者を除く）
+ * @returns 改善された割り当て配列、または null（改善なし）
+ */
+export function tryPhase3Fix(
+  courtAssignments: [number, number, number, number][],
+  pairHistory: CountMatrix,
+  playingPlayers: number[],
+): [number, number, number, number][] | null {
+  const C = courtAssignments.length;
+  if (C === 0) return null;
+
+  // 各コートについて3つのペアリング候補を構築
+  // variants[k][0] = 元の割り当て, [1] = p2↔p3 入れ替え, [2] = p2↔p4 入れ替え
+  const variants: [number, number, number, number][][] = courtAssignments.map(([p1, p2, p3, p4]) => [
+    [p1, p2, p3, p4],
+    [p1, p3, p2, p4],
+    [p1, p4, p2, p3],
+  ]);
+
+  const originalViolations = countUnnecessaryRepeatPairs(courtAssignments, pairHistory, playingPlayers);
+  let bestViolations = originalViolations;
+  let bestTiebreak = Infinity;
+  let bestIndices: number[] | null = null;
+
+  // 3^C 組み合わせをオドメーター方式で列挙
+  const indices = new Array<number>(C).fill(0);
+  outer: while (true) {
+    const candidate: [number, number, number, number][] = indices.map((idx, k) => variants[k][idx]);
+    const violations = countUnnecessaryRepeatPairs(candidate, pairHistory, playingPlayers);
+    let tiebreak = 0;
+    for (const [p1, p2, p3, p4] of candidate) {
+      tiebreak += pairHistory[p1 - 1][p2 - 1] + pairHistory[p3 - 1][p4 - 1];
+    }
+    if (violations < bestViolations || (violations === bestViolations && tiebreak < bestTiebreak)) {
+      bestViolations = violations;
+      bestTiebreak = tiebreak;
+      bestIndices = [...indices];
+    }
+
+    // インクリメント（オドメーター）
+    let pos = C - 1;
+    while (pos >= 0) {
+      indices[pos]++;
+      if (indices[pos] < 3) break;
+      indices[pos] = 0;
+      pos--;
+    }
+    if (pos < 0) break outer;
+  }
+
+  // 改善がなければ null を返す
+  if (bestViolations >= originalViolations || bestIndices === null) return null;
+  return bestIndices.map((idx, k) => variants[k][idx]);
+}

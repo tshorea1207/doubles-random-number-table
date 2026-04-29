@@ -32,9 +32,10 @@ import {
   assignCourtWithScoring,
   assignCourtWithScoringFixedPairs,
   buildNormalizedMatches,
+  tryPhase3Fix,
 } from "./sequentialUtils";
 
-const MAX_RETRY_HARD = 100; // Phase1   ハードペア制約
+const MAX_RETRY_HARD = 10000; // Phase1   ハードペア制約
 const MAX_RETRY_OPPO = 100; // Phase1.5 ハード対戦制約
 const MAX_RETRY_SOFT = 100; // Phase2   ソフト制約
 const PAIR_MAX_PENALTY = 100; // 最大ペア制約
@@ -286,7 +287,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
   }
 
   /**
-   * 1ラウンドを生成する（2フェーズ: バックトラック → スコアリングフォールバック）
+   * 1ラウンドを生成する（3フェーズ: バックトラック → スコアリングフォールバック → ペア重複修正）
    */
   private generateRound(
     roundNumber: number,
@@ -333,25 +334,36 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     }
 
     // === Phase 1.5: 対戦制約のみバックトラック（ペア制約緩和） ===
-    for (let retry = 0; retry < MAX_RETRY_OPPO; retry++) {
-      const available = shuffle([...playingPlayers]);
-      const courtAssignments: [number, number, number, number][] = [];
-      let failed = false;
+    {
+      let phase15Assignments: [number, number, number, number][] | null = null;
+      for (let retry = 0; retry < MAX_RETRY_OPPO; retry++) {
+        const available = shuffle([...playingPlayers]);
+        const courtAssignments: [number, number, number, number][] = [];
+        let failed = false;
 
-      for (let k = 0; k < courtsCount; k++) {
-        const result = hasFixedPairs
-          ? tryAssignCourtOpponentOnlyFixedPairs(available, pairHistory, opponentHistory, fixedPairs)
-          : tryAssignCourtOpponentOnly(available, pairHistory, opponentHistory);
+        for (let k = 0; k < courtsCount; k++) {
+          const result = hasFixedPairs
+            ? tryAssignCourtOpponentOnlyFixedPairs(available, pairHistory, opponentHistory, fixedPairs)
+            : tryAssignCourtOpponentOnly(available, pairHistory, opponentHistory);
 
-        if (result === null) {
-          failed = true;
+          if (result === null) {
+            failed = true;
+            break;
+          }
+          courtAssignments.push(result);
+        }
+
+        if (!failed) {
+          phase15Assignments = courtAssignments;
           break;
         }
-        courtAssignments.push(result);
       }
 
-      if (!failed) {
-        const matches: Match[] = buildNormalizedMatches(courtAssignments);
+      if (phase15Assignments !== null) {
+        // === Phase 3: ペア重複修正 ===
+        const fixed = tryPhase3Fix(phase15Assignments, pairHistory, playingPlayers);
+        const finalAssignments = fixed ?? phase15Assignments;
+        const matches: Match[] = buildNormalizedMatches(finalAssignments);
         return { roundNumber, matches, restingPlayers: sortedResting };
       }
     }
@@ -359,6 +371,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     // === Phase 2: スコアリングベースのフォールバック（常に成功） ===
     let bestMatches: Match[] | null = null;
     let bestScore = Infinity;
+    let bestCourtAssignments: [number, number, number, number][] | null = null;
 
     for (let retry = 0; retry < MAX_RETRY_SOFT; retry++) {
       const available = shuffle([...playingPlayers]);
@@ -376,6 +389,15 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       if (score < bestScore) {
         bestScore = score;
         bestMatches = matches;
+        bestCourtAssignments = courtAssignments;
+      }
+    }
+
+    // === Phase 3: ペア重複修正 ===
+    if (bestCourtAssignments !== null) {
+      const fixed = tryPhase3Fix(bestCourtAssignments, pairHistory, playingPlayers);
+      if (fixed !== null) {
+        bestMatches = buildNormalizedMatches(fixed);
       }
     }
 
