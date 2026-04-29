@@ -35,7 +35,6 @@ type RoundViolations = {
   c1_pairDuplicates: number;
   c2_oppoDuplicates: number;
   c3_unfairRest: number;
-  c3_restSpreadGe2: boolean;
   c4_prevOppoNowPair: number;
   c5_prevPairNowOppo: number;
   hasRest: boolean;
@@ -47,11 +46,9 @@ type ScheduleAnalysis = {
     c1: number;
     c2: number;
     c3_cases: number;
-    c3_spreadRounds: number;
     c4: number;
     c5: number;
   };
-  finalRestSpread: number;
   evaluation: Evaluation;
 };
 
@@ -93,7 +90,7 @@ function analyzeScheduleDetailed(schedule: Schedule): ScheduleAnalysis {
   const allPlayers = schedule.activePlayers;
 
   const roundViolations: RoundViolations[] = [];
-  const totals = { c1: 0, c2: 0, c3_cases: 0, c3_spreadRounds: 0, c4: 0, c5: 0 };
+  const totals = { c1: 0, c2: 0, c3_cases: 0, c4: 0, c5: 0 };
   let prevRound: Round | null = null;
 
   for (const round of schedule.rounds) {
@@ -126,7 +123,6 @@ function analyzeScheduleDetailed(schedule: Schedule): ScheduleAnalysis {
 
     // ── 観点3: 不公平休憩 ─────────────────────────────────────
     let c3 = 0;
-    let c3_spreadGe2 = false;
     const hasRest = round.restingPlayers.length > 0;
     if (hasRest) {
       const currentRestVals = allPlayers.map((p) => restCounts[p - 1]);
@@ -134,11 +130,6 @@ function analyzeScheduleDetailed(schedule: Schedule): ScheduleAnalysis {
       for (const p of round.restingPlayers) {
         if (restCounts[p - 1] > minRest) c3++;
       }
-      // このラウンド後の spread を先読み確認
-      const tempRest = restCounts.slice();
-      for (const p of round.restingPlayers) tempRest[p - 1]++;
-      const afterVals = allPlayers.map((p) => tempRest[p - 1]);
-      if (Math.max(...afterVals) - Math.min(...afterVals) >= 2) c3_spreadGe2 = true;
     }
 
     // ── 観点4: 前R対戦相手が今Rペアに ────────────────────────
@@ -172,7 +163,6 @@ function analyzeScheduleDetailed(schedule: Schedule): ScheduleAnalysis {
       c1_pairDuplicates: c1,
       c2_oppoDuplicates: c2,
       c3_unfairRest: c3,
-      c3_restSpreadGe2: c3_spreadGe2,
       c4_prevOppoNowPair: c4,
       c5_prevPairNowOppo: c5,
       hasRest,
@@ -181,7 +171,6 @@ function analyzeScheduleDetailed(schedule: Schedule): ScheduleAnalysis {
     totals.c1 += c1;
     totals.c2 += c2;
     totals.c3_cases += c3;
-    if (c3_spreadGe2) totals.c3_spreadRounds++;
     totals.c4 += c4;
     totals.c5 += c5;
 
@@ -191,10 +180,7 @@ function analyzeScheduleDetailed(schedule: Schedule): ScheduleAnalysis {
     prevRound = round;
   }
 
-  const finalVals = allPlayers.map((p) => restCounts[p - 1]);
-  const finalRestSpread = finalVals.length > 0 ? Math.max(...finalVals) - Math.min(...finalVals) : 0;
-
-  return { roundViolations, totals, finalRestSpread, evaluation: schedule.evaluation };
+  return { roundViolations, totals, evaluation: schedule.evaluation };
 }
 
 // ─── シナリオ実行 ─────────────────────────────────────────────
@@ -234,52 +220,20 @@ function printReport(label: string, analyses: ScheduleAnalysis[]): void {
   console.log(`[${label}]  ${runsCount}回実行`);
   console.log(SEP);
 
-  // 観点1
-  const c1b = best((a) => a.totals.c1);
-  const c1w = worst((a) => a.totals.c1);
-  const c1a = avg((a) => a.totals.c1);
-  console.log(`(1) ペア重複 [全${rounds}R中の発生ペア数]`);
-  console.log(`    最良: ${c1b}  最悪: ${c1w}  平均: ${f(c1a)}`);
+  const row = (label: string, b: number, w: number, a: number) =>
+    console.log(`${label.padEnd(28)}最良: ${String(b).padStart(3)}  最悪: ${String(w).padStart(3)}  平均: ${f(a)}`);
 
-  // 観点2
-  const c2b = best((a) => a.totals.c2);
-  const c2w = worst((a) => a.totals.c2);
-  const c2a = avg((a) => a.totals.c2);
-  console.log(`(2) 対戦重複 [全${rounds}R中の発生組み合わせ数]`);
-  console.log(`    最良: ${c2b}  最悪: ${c2w}  平均: ${f(c2a)}`);
+  row(`(1) ペア重複 [全${rounds}R・発生ペア数]`, best((a) => a.totals.c1), worst((a) => a.totals.c1), avg((a) => a.totals.c1));
+  row(`(2) 対戦重複 [全${rounds}R・発生組数]`, best((a) => a.totals.c2), worst((a) => a.totals.c2), avg((a) => a.totals.c2));
 
-  // 観点3
   if (hasRest) {
-    const c3b = best((a) => a.totals.c3_cases);
-    const c3w = worst((a) => a.totals.c3_cases);
-    const c3a = avg((a) => a.totals.c3_cases);
-    const c3sb = best((a) => a.totals.c3_spreadRounds);
-    const c3sw = worst((a) => a.totals.c3_spreadRounds);
-    const c3sa = avg((a) => a.totals.c3_spreadRounds);
-    const rspb = best((a) => a.finalRestSpread);
-    const rspw = worst((a) => a.finalRestSpread);
-    const rspa = avg((a) => a.finalRestSpread);
-    console.log(`(3) 不公平休憩 [不公平に休憩させられた人数の累計]`);
-    console.log(`    最良: ${c3b}  最悪: ${c3w}  平均: ${f(c3a)}`);
-    console.log(`    休憩spread≥2発生ラウンド数: 最良: ${c3sb}  最悪: ${c3sw}  平均: ${f(c3sa)}`);
-    console.log(`    最終休憩spread (MAX-MIN): 最良: ${rspb}  最悪: ${rspw}  平均: ${f(rspa)}`);
+    row(`(3) 不公平休憩 [累計人数]`, best((a) => a.totals.c3_cases), worst((a) => a.totals.c3_cases), avg((a) => a.totals.c3_cases));
   } else {
-    console.log(`(3) 不公平休憩: - (休憩なし)`);
+    console.log(`(3) 不公平休憩                      - (休憩なし)`);
   }
 
-  // 観点4
-  const c4b = best((a) => a.totals.c4);
-  const c4w = worst((a) => a.totals.c4);
-  const c4a = avg((a) => a.totals.c4);
-  console.log(`(4) 前R対戦→今Rペア [全${rounds}R中の発生ペア数]`);
-  console.log(`    最良: ${c4b}  最悪: ${c4w}  平均: ${f(c4a)}`);
-
-  // 観点5
-  const c5b = best((a) => a.totals.c5);
-  const c5w = worst((a) => a.totals.c5);
-  const c5a = avg((a) => a.totals.c5);
-  console.log(`(5) 前Rペア→今R対戦 [全${rounds}R中の発生組み合わせ数]`);
-  console.log(`    最良: ${c5b}  最悪: ${c5w}  平均: ${f(c5a)}`);
+  row(`(4) 前R対戦→今Rペア [全${rounds}R]`, best((a) => a.totals.c4), worst((a) => a.totals.c4), avg((a) => a.totals.c4));
+  row(`(5) 前Rペア→今R対戦 [全${rounds}R]`, best((a) => a.totals.c5), worst((a) => a.totals.c5), avg((a) => a.totals.c5));
 
   // 評価指標
   console.log(THIN);
