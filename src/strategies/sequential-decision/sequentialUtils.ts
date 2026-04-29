@@ -647,6 +647,38 @@ function generateSplits4From8(players8: number[]): [number[], number[]][] {
 }
 
 /**
+ * 12人のプレイヤーを4+4+4に分割する全組み合わせを生成する
+ *
+ * players12[0] を常にグループAに固定し、残りの先頭をグループBに固定することで
+ * C(11,3) × C(7,3) = 165 × 35 = 5,775 通りに削減する。
+ */
+function generateSplits4From12(players12: number[]): [number[], number[], number[]][] {
+  const result: [number[], number[], number[]][] = [];
+  const fixedA = players12[0];
+  const restA = players12.slice(1); // 11要素
+  for (let a = 0; a < restA.length - 2; a++) {
+    for (let b = a + 1; b < restA.length - 1; b++) {
+      for (let c = b + 1; c < restA.length; c++) {
+        const groupA = [fixedA, restA[a], restA[b], restA[c]];
+        const remaining8 = restA.filter((_, idx) => idx !== a && idx !== b && idx !== c);
+        const fixedB = remaining8[0];
+        const restB = remaining8.slice(1); // 7要素
+        for (let d = 0; d < restB.length - 2; d++) {
+          for (let e = d + 1; e < restB.length - 1; e++) {
+            for (let f = e + 1; f < restB.length; f++) {
+              const groupB = [fixedB, restB[d], restB[e], restB[f]];
+              const groupC = restB.filter((_, idx) => idx !== d && idx !== e && idx !== f);
+              result.push([groupA, groupB, groupC]);
+            }
+          }
+        }
+      }
+    }
+  }
+  return result;
+}
+
+/**
  * 4人の全ペアリングパターン（3通り）を返す
  */
 function generatePairings4(players: number[]): [number, number, number, number][] {
@@ -809,6 +841,71 @@ export function tryPhase3FixExpanded(
               bestViolations = violations;
               bestTiebreak = tiebreak;
               bestResult = [...candidate] as [number, number, number, number][];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return bestResult;
+}
+
+/**
+ * Phase 3 拡張版②: ①②で改善できない場合、Phase3対象コートのペアに非対象コートを
+ * 1つ加えた3コート間でプレイヤー交換を試みる
+ *
+ * 手順:
+ * 1. Phase3対象コートのペア × 非対象コート（①②未使用）を順に試す
+ * 2. C(11,3) × C(7,3) × 3^3 = 5,775 × 27 = 155,925 通り/トリプルを探索
+ *
+ * @param courtAssignments - 各コートの [p1, p2, p3, p4] 配列
+ * @param pairHistory - ペア履歴行列
+ * @param playingPlayers - 今ラウンドでプレイするプレイヤー
+ * @returns 改善された割り当て配列、または null（改善なし）
+ */
+export function tryPhase3FixWithExtraCourt(
+  courtAssignments: [number, number, number, number][],
+  pairHistory: CountMatrix,
+  playingPlayers: number[],
+): [number, number, number, number][] | null {
+  const targetIndices = findPhase3TargetCourts(courtAssignments, pairHistory, playingPlayers);
+  if (targetIndices.length < 2) return null;
+  const targetSet = new Set(targetIndices);
+  const nonTargetIndices = courtAssignments.map((_, k) => k).filter(k => !targetSet.has(k));
+  if (nonTargetIndices.length === 0) return null;
+
+  const originalViolations = countUnnecessaryRepeatPairs(courtAssignments, pairHistory, playingPlayers);
+  let bestViolations = originalViolations;
+  let bestTiebreak = Infinity;
+  let bestResult: [number, number, number, number][] | null = null;
+
+  for (let i = 0; i < targetIndices.length - 1; i++) {
+    for (let j = i + 1; j < targetIndices.length; j++) {
+      const courtI = targetIndices[i];
+      const courtJ = targetIndices[j];
+      for (const courtK of nonTargetIndices) {
+        const players12 = [...courtAssignments[courtI], ...courtAssignments[courtJ], ...courtAssignments[courtK]];
+        for (const [groupA, groupB, groupC] of generateSplits4From12(players12)) {
+          for (const pA of generatePairings4(groupA)) {
+            for (const pB of generatePairings4(groupB)) {
+              for (const pC of generatePairings4(groupC)) {
+                const candidate = [...courtAssignments] as [number, number, number, number][];
+                candidate[courtI] = pA;
+                candidate[courtJ] = pB;
+                candidate[courtK] = pC;
+                const violations = countUnnecessaryRepeatPairs(candidate, pairHistory, playingPlayers);
+                const tiebreak =
+                  pairHistory[pA[0] - 1][pA[1] - 1] + pairHistory[pA[2] - 1][pA[3] - 1] +
+                  pairHistory[pB[0] - 1][pB[1] - 1] + pairHistory[pB[2] - 1][pB[3] - 1] +
+                  pairHistory[pC[0] - 1][pC[1] - 1] + pairHistory[pC[2] - 1][pC[3] - 1];
+                if (violations < bestViolations ||
+                    (violations === bestViolations && tiebreak < bestTiebreak)) {
+                  bestViolations = violations;
+                  bestTiebreak = tiebreak;
+                  bestResult = [...candidate] as [number, number, number, number][];
+                }
+              }
             }
           }
         }

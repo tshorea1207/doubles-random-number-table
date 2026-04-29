@@ -33,6 +33,7 @@ import {
   assignCourtWithScoringFixedPairs,
   buildNormalizedMatches,
   tryPhase3FixExpanded,
+  tryPhase3FixWithExtraCourt,
 } from "./sequentialUtils";
 
 const MAX_RETRY_HARD = 10000; // Phase1   ハードペア制約
@@ -361,7 +362,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
 
       if (phase15Assignments !== null) {
         // === Phase 3: ペア重複修正 ===
-        const fixed = tryPhase3FixExpanded(phase15Assignments, pairHistory, playingPlayers);
+        const fixed = tryPhase3FixExpanded(phase15Assignments, pairHistory, playingPlayers)
+                   ?? tryPhase3FixWithExtraCourt(phase15Assignments, pairHistory, playingPlayers);
         const finalAssignments = fixed ?? phase15Assignments;
         const matches: Match[] = buildNormalizedMatches(finalAssignments);
         return { roundNumber, matches, restingPlayers: sortedResting };
@@ -395,7 +397,8 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
 
     // === Phase 3: ペア重複修正 ===
     if (bestCourtAssignments !== null) {
-      const fixed = tryPhase3FixExpanded(bestCourtAssignments, pairHistory, playingPlayers);
+      const fixed = tryPhase3FixExpanded(bestCourtAssignments, pairHistory, playingPlayers)
+                 ?? tryPhase3FixWithExtraCourt(bestCourtAssignments, pairHistory, playingPlayers);
       if (fixed !== null) {
         bestMatches = buildNormalizedMatches(fixed);
       }
