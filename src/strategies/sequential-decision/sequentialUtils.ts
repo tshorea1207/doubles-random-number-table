@@ -597,6 +597,68 @@ export function buildNormalizedMatches(
 // === Phase 3: 不要なペア重複修正 ===
 
 /**
+ * Phase3対象コートのインデックスを返す
+ *
+ * 以下の条件を満たすコートを「Phase3対象」とする:
+ * - コート内に既ペア済ペアが存在する (pairHistory > 0)
+ * - かつ当該プレイヤーにはまだペアを組んでいない相手が playingPlayers 内に存在する
+ */
+function findPhase3TargetCourts(
+  courtAssignments: [number, number, number, number][],
+  pairHistory: CountMatrix,
+  playingPlayers: number[],
+): number[] {
+  const targets: number[] = [];
+  for (let k = 0; k < courtAssignments.length; k++) {
+    const [p1, p2, p3, p4] = courtAssignments[k];
+    let isTarget = false;
+    for (const [p, q] of [[p1, p2], [p3, p4]] as [number, number][]) {
+      if (pairHistory[p - 1][q - 1] > 0) {
+        const hasUnpairedPartner = playingPlayers.some(
+          r => r !== p && r !== q && pairHistory[p - 1][r - 1] === 0
+        );
+        if (hasUnpairedPartner) { isTarget = true; break; }
+      }
+    }
+    if (isTarget) targets.push(k);
+  }
+  return targets;
+}
+
+/**
+ * 8人のプレイヤーを4+4に分割する全組み合わせを生成する
+ *
+ * players8[0] を常にグループAに固定して C(7,3) = 35 通りに削減する。
+ */
+function generateSplits4From8(players8: number[]): [number[], number[]][] {
+  const result: [number[], number[]][] = [];
+  const fixed = players8[0];
+  const rest = players8.slice(1);
+  for (let a = 0; a < rest.length - 2; a++) {
+    for (let b = a + 1; b < rest.length - 1; b++) {
+      for (let c = b + 1; c < rest.length; c++) {
+        const groupA = [fixed, rest[a], rest[b], rest[c]];
+        const groupB = rest.filter((_, idx) => idx !== a && idx !== b && idx !== c);
+        result.push([groupA, groupB]);
+      }
+    }
+  }
+  return result;
+}
+
+/**
+ * 4人の全ペアリングパターン（3通り）を返す
+ */
+function generatePairings4(players: number[]): [number, number, number, number][] {
+  const [p1, p2, p3, p4] = players;
+  return [
+    [p1, p2, p3, p4],
+    [p1, p3, p2, p4],
+    [p1, p4, p2, p3],
+  ];
+}
+
+/**
  * 不要なペア重複の数を数える
  *
  * ペア (p, q) が以下の条件を満たす場合「不要な重複ペア」とみなす:
@@ -690,4 +752,69 @@ export function tryPhase3Fix(
   // 改善がなければ null を返す
   if (bestViolations >= originalViolations || bestIndices === null) return null;
   return bestIndices.map((idx, k) => variants[k][idx]);
+}
+
+/**
+ * Phase 3 拡張版: コート内修正で改善できない場合、別の Phase3 対象コートと
+ * プレイヤーを入れ替えてペア重複削減を試みる
+ *
+ * 手順:
+ * 1. コート内のみの Phase3 修正（tryPhase3Fix）を試みる → 改善あれば返す
+ * 2. 改善なし → Phase3 対象コートの全ペアに対して C(7,3) × 9 = 315 通りを探索
+ *
+ * Phase3対象コートの条件: 未ペアプレイヤーが存在するにもかかわらず、
+ * コート内に既ペア済ペアが含まれているコート。
+ *
+ * @param courtAssignments - 各コートの [p1, p2, p3, p4] 配列
+ * @param pairHistory - ペア履歴行列
+ * @param playingPlayers - 今ラウンドでプレイするプレイヤー
+ * @returns 改善された割り当て配列、または null（改善なし）
+ */
+export function tryPhase3FixExpanded(
+  courtAssignments: [number, number, number, number][],
+  pairHistory: CountMatrix,
+  playingPlayers: number[],
+): [number, number, number, number][] | null {
+  const intraFix = tryPhase3Fix(courtAssignments, pairHistory, playingPlayers);
+  if (intraFix !== null) return intraFix;
+
+  const targetIndices = findPhase3TargetCourts(courtAssignments, pairHistory, playingPlayers);
+  if (targetIndices.length < 2) return null;
+
+  const originalViolations = countUnnecessaryRepeatPairs(courtAssignments, pairHistory, playingPlayers);
+  let bestViolations = originalViolations;
+  let bestTiebreak = Infinity;
+  let bestResult: [number, number, number, number][] | null = null;
+
+  for (let i = 0; i < targetIndices.length - 1; i++) {
+    for (let j = i + 1; j < targetIndices.length; j++) {
+      const courtI = targetIndices[i];
+      const courtJ = targetIndices[j];
+      const players8 = [...courtAssignments[courtI], ...courtAssignments[courtJ]];
+
+      for (const [groupA, groupB] of generateSplits4From8(players8)) {
+        for (const pA of generatePairings4(groupA)) {
+          for (const pB of generatePairings4(groupB)) {
+            const candidate = [...courtAssignments] as [number, number, number, number][];
+            candidate[courtI] = pA;
+            candidate[courtJ] = pB;
+
+            const violations = countUnnecessaryRepeatPairs(candidate, pairHistory, playingPlayers);
+            const tiebreak =
+              pairHistory[pA[0] - 1][pA[1] - 1] + pairHistory[pA[2] - 1][pA[3] - 1] +
+              pairHistory[pB[0] - 1][pB[1] - 1] + pairHistory[pB[2] - 1][pB[3] - 1];
+
+            if (violations < bestViolations ||
+                (violations === bestViolations && tiebreak < bestTiebreak)) {
+              bestViolations = violations;
+              bestTiebreak = tiebreak;
+              bestResult = [...candidate] as [number, number, number, number][];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return bestResult;
 }
