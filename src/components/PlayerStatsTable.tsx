@@ -350,7 +350,10 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
         if (pc[match.pairB.player1 - 1][match.pairB.player2 - 1] > 0) totals.c1++;
       }
 
-      // (2) 対戦重複
+      // (2) 対戦重複（最小対戦回数を超えたペアのみカウント）
+      const minOC = Math.min(
+        ...allPlayers.flatMap((a, i) => allPlayers.slice(i + 1).map((b) => oc[a - 1][b - 1]))
+      );
       for (const match of round.matches) {
         const { pairA, pairB } = match;
         for (const [a, b] of [
@@ -359,7 +362,7 @@ export function PlayerStatsTable({ schedule }: PlayerStatsTableProps) {
           [pairA.player2, pairB.player1],
           [pairA.player2, pairB.player2],
         ] as [number, number][]) {
-          if (oc[a - 1][b - 1] > 0) totals.c2++;
+          if (oc[a - 1][b - 1] > minOC) totals.c2++;
         }
       }
 
