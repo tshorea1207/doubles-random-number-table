@@ -55,13 +55,13 @@ function MatchCell({ match }: { match: Match }) {
           borderRadius: 1,
           px: 0.75,
           py: 0.25,
-          fontSize: "0.875rem",
+          fontSize: { sm: "1.75rem", lg: "0.875rem" },
           fontWeight: 500,
         }}
       >
         {match.pairA.player1},{match.pairA.player2}
       </Box>
-      <Typography variant="caption" sx={{ color: "text.secondary", mx: 0.25 }}>
+      <Typography variant="caption" sx={{ color: "text.secondary", mx: 0.25, fontSize: "1.0rem" }}>
         vs
       </Typography>
       <Box
@@ -70,7 +70,7 @@ function MatchCell({ match }: { match: Match }) {
           borderRadius: 1,
           px: 0.75,
           py: 0.25,
-          fontSize: "0.875rem",
+          fontSize: { sm: "1.75rem", lg: "0.875rem" },
           fontWeight: 500,
         }}
       >
@@ -257,7 +257,7 @@ export function ScheduleTable({
         {/* デスクトップ: テーブル表示 */}
         <Box sx={{ display: { xs: "none", sm: "block" } }}>
           <TableContainer>
-            <Table aria-label="対戦表">
+            <Table aria-label="対戦表" sx={{ "& .MuiTableCell-body": { fontSize: { sm: "1.75rem", lg: "0.875rem" } } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>
@@ -283,6 +283,7 @@ export function ScheduleTable({
                     sx={{
                       cursor: "pointer",
                       userSelect: "none",
+                      height: { sm: "5.0rem", lg: "2.0rem" },
                       bgcolor: scheduleColors.completedRow,
                       "&:hover": { bgcolor: scheduleColors.completedRowHover },
                     }}
@@ -314,6 +315,7 @@ export function ScheduleTable({
                       sx={{
                         cursor: "pointer",
                         userSelect: "none",
+                        height: { sm: "5.0rem", lg: "2.0rem" },
                         backgroundColor: scheduleColors.completedRow,
                         opacity: 0.7,
                         "&:hover": {
@@ -357,6 +359,7 @@ export function ScheduleTable({
                     sx={{
                       cursor: "pointer",
                       userSelect: "none",
+                      height: { sm: "5.0rem", lg: "2.0rem" },
                       "&:hover": {
                         backgroundColor: scheduleColors.rowHover,
                       },
