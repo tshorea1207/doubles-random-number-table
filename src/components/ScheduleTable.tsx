@@ -94,6 +94,7 @@ function swapPlayer(current: number, from: number, to: number): number {
 
 export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound, openedAt, onRoundOpened, speechPitch, speechRate, onEditRound }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
+  const [expanded, setExpanded] = useState(true);
   const [completedExpanded, setCompletedExpanded] = useState(false);
   const [now, setNow] = useState(Date.now());
   const { speak, stop, isSpeaking } = useSpeech(speechPitch, speechRate);
@@ -234,9 +235,21 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
 
   return (
     <Paper sx={{ mb: 3 }}>
-      <Typography variant="h6" sx={{ p: 2 }}>
-        対戦表
-      </Typography>
+      {/* ヘッダー行: 常時表示 */}
+      <Box
+        sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1.5, cursor: 'pointer' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <Typography variant="h6" sx={{ flex: 1 }}>
+          対戦表
+        </Typography>
+        <IconButton size="small" aria-label={expanded ? '対戦表を閉じる' : '対戦表を表示'}>
+          {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
+      </Box>
+
+      {/* 本体: 折りたたみ可能 */}
+      <Collapse in={expanded}>
 
       {/* デスクトップ: テーブル表示 */}
       <Box sx={{ display: { xs: "none", sm: "block" } }}>
@@ -520,6 +533,8 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
           </Button>
         </Box>
       )}
+
+      </Collapse>
 
       {/* ラウンド詳細ダイアログ */}
       <Dialog
