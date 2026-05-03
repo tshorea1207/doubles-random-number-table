@@ -33,7 +33,6 @@ import type { Schedule, Match, Round } from "../types/schedule";
 import { scheduleColors } from "../theme";
 import { useSpeech, buildSpeechText } from "../hooks/useSpeech";
 
-
 interface ScheduleTableProps {
   schedule: Schedule;
   completedMatches: Set<string>;
@@ -92,7 +91,17 @@ function swapPlayer(current: number, from: number, to: number): number {
   return current;
 }
 
-export function ScheduleTable({ schedule, completedMatches, onToggleComplete, onAddRound, openedAt, onRoundOpened, speechPitch, speechRate, onEditRound }: ScheduleTableProps) {
+export function ScheduleTable({
+  schedule,
+  completedMatches,
+  onToggleComplete,
+  onAddRound,
+  openedAt,
+  onRoundOpened,
+  speechPitch,
+  speechRate,
+  onEditRound,
+}: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [completedExpanded, setCompletedExpanded] = useState(false);
@@ -196,9 +205,7 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
         player2: swapPlayer(m.pairB.player2, fromPlayer, toPlayer),
       },
     }));
-    const newResting = round.restingPlayers
-      .map((p) => swapPlayer(p, fromPlayer, toPlayer))
-      .sort((a, b) => a - b);
+    const newResting = round.restingPlayers.map((p) => swapPlayer(p, fromPlayer, toPlayer)).sort((a, b) => a - b);
     setEditedRound({ ...round, matches: newMatches, restingPlayers: newResting });
     setChangedPlayers((prev) => new Set([...prev, fromPlayer, toPlayer]));
     setSwapTarget(null);
@@ -236,66 +243,105 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
   return (
     <Paper sx={{ mb: 3 }}>
       {/* ヘッダー行: 常時表示 */}
-      <Box
-        sx={{ display: 'flex', alignItems: 'center', px: 2, py: 1.5, cursor: 'pointer' }}
-        onClick={() => setExpanded(!expanded)}
-      >
+      <Box sx={{ display: "flex", alignItems: "center", px: 2, py: 1.5, cursor: "pointer" }} onClick={() => setExpanded(!expanded)}>
         <Typography variant="h6" sx={{ flex: 1 }}>
           対戦表
         </Typography>
-        <IconButton size="small" aria-label={expanded ? '対戦表を閉じる' : '対戦表を表示'}>
+        <IconButton size="small" aria-label={expanded ? "対戦表を閉じる" : "対戦表を表示"}>
           {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
       </Box>
 
       {/* 本体: 折りたたみ可能 */}
       <Collapse in={expanded}>
-
-      {/* デスクトップ: テーブル表示 */}
-      <Box sx={{ display: { xs: "none", sm: "block" } }}>
-        <TableContainer>
-          <Table aria-label="対戦表">
-            <TableHead>
-              <TableRow>
-                <TableCell>
-                  <strong>ラウンド</strong>
-                </TableCell>
-                {Array.from({ length: schedule.courts }, (_, i) => (
-                  <TableCell key={i} align="center">
-                    <strong>コート {i + 1}</strong>
+        {/* デスクトップ: テーブル表示 */}
+        <Box sx={{ display: { xs: "none", sm: "block" } }}>
+          <TableContainer>
+            <Table aria-label="対戦表">
+              <TableHead>
+                <TableRow>
+                  <TableCell>
+                    <strong>ラウンド</strong>
                   </TableCell>
-                ))}
-                {hasRestingPlayers && (
-                  <TableCell align="center">
-                    <strong>休憩</strong>
-                  </TableCell>
-                )}
-              </TableRow>
-            </TableHead>
-
-            <TableBody>
-              {completedRounds.length > 0 && (
-                <TableRow
-                  onClick={() => setCompletedExpanded(!completedExpanded)}
-                  sx={{
-                    cursor: "pointer",
-                    userSelect: "none",
-                    bgcolor: scheduleColors.completedRow,
-                    "&:hover": { bgcolor: scheduleColors.completedRowHover },
-                  }}
-                >
-                  <TableCell colSpan={totalColSpan}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      {completedExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                      <Typography variant="body2" fontWeight={500}>
-                        消化済み ({completedRounds.length} ラウンド)
-                      </Typography>
-                    </Box>
-                  </TableCell>
+                  {Array.from({ length: schedule.courts }, (_, i) => (
+                    <TableCell key={i} align="center">
+                      <strong>コート {i + 1}</strong>
+                    </TableCell>
+                  ))}
+                  {hasRestingPlayers && (
+                    <TableCell align="center">
+                      <strong>休憩</strong>
+                    </TableCell>
+                  )}
                 </TableRow>
-              )}
-              {completedExpanded &&
-                completedRounds.map((round) => (
+              </TableHead>
+
+              <TableBody>
+                {completedRounds.length > 0 && (
+                  <TableRow
+                    onClick={() => setCompletedExpanded(!completedExpanded)}
+                    sx={{
+                      cursor: "pointer",
+                      userSelect: "none",
+                      bgcolor: scheduleColors.completedRow,
+                      "&:hover": { bgcolor: scheduleColors.completedRowHover },
+                    }}
+                  >
+                    <TableCell colSpan={totalColSpan}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                        {completedExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                        <Typography variant="body2" fontWeight={500}>
+                          消化済み ({completedRounds.length} ラウンド)
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {completedExpanded &&
+                  completedRounds.map((round) => (
+                    <TableRow
+                      key={round.roundNumber}
+                      onClick={() => handleRoundClick(round)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleRoundClick(round);
+                        }
+                      }}
+                      aria-label={`ラウンド${round.roundNumber}の詳細を表示`}
+                      sx={{
+                        cursor: "pointer",
+                        userSelect: "none",
+                        backgroundColor: scheduleColors.completedRow,
+                        opacity: 0.7,
+                        "&:hover": {
+                          backgroundColor: scheduleColors.completedRowHover,
+                        },
+                      }}
+                    >
+                      <TableCell>
+                        <strong>{round.roundNumber}</strong>
+                        {openedAt[`${round.roundNumber}`] && (
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            {formatTime(openedAt[`${round.roundNumber}`])}
+                          </Typography>
+                        )}
+                      </TableCell>
+                      {round.matches.map((match, idx) => (
+                        <TableCell key={idx} align="center">
+                          <MatchCell match={match} />
+                        </TableCell>
+                      ))}
+                      {hasRestingPlayers && (
+                        <TableCell align="center" sx={{ color: "text.secondary" }}>
+                          {round.restingPlayers && round.restingPlayers.length > 0 ? round.restingPlayers.join(", ") : "-"}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                {nonCompletedRounds.map((round) => (
                   <TableRow
                     key={round.roundNumber}
                     onClick={() => handleRoundClick(round)}
@@ -311,10 +357,8 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                     sx={{
                       cursor: "pointer",
                       userSelect: "none",
-                      backgroundColor: scheduleColors.completedRow,
-                      opacity: 0.7,
                       "&:hover": {
-                        backgroundColor: scheduleColors.completedRowHover,
+                        backgroundColor: scheduleColors.rowHover,
                       },
                     }}
                   >
@@ -338,202 +382,228 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                     )}
                   </TableRow>
                 ))}
-              {nonCompletedRounds.map((round) => (
-                <TableRow
-                  key={round.roundNumber}
-                  onClick={() => handleRoundClick(round)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleRoundClick(round);
-                    }
-                  }}
-                  aria-label={`ラウンド${round.roundNumber}の詳細を表示`}
-                  sx={{
-                    cursor: "pointer",
-                    userSelect: "none",
-                    "&:hover": {
-                      backgroundColor: scheduleColors.rowHover,
-                    },
-                  }}
-                >
-                  <TableCell>
-                    <strong>{round.roundNumber}</strong>
-                    {openedAt[`${round.roundNumber}`] && (
-                      <Typography variant="caption" display="block" color="text.secondary">
-                        {formatTime(openedAt[`${round.roundNumber}`])}
-                      </Typography>
-                    )}
-                  </TableCell>
-                  {round.matches.map((match, idx) => (
-                    <TableCell key={idx} align="center">
-                      <MatchCell match={match} />
-                    </TableCell>
-                  ))}
-                  {hasRestingPlayers && (
-                    <TableCell align="center" sx={{ color: "text.secondary" }}>
-                      {round.restingPlayers && round.restingPlayers.length > 0 ? round.restingPlayers.join(", ") : "-"}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
 
-      {/* モバイル: カード表示 */}
-      <Box sx={{ display: { xs: "block", sm: "none" }, px: 2, pb: 2 }}>
-        {completedRounds.length > 0 && (
-          <>
-            <Box
-              onClick={() => setCompletedExpanded(!completedExpanded)}
+        {/* モバイル: カード表示 */}
+        <Box sx={{ display: { xs: "block", sm: "none" }, px: 2, pb: 2 }}>
+          {completedRounds.length > 0 && (
+            <>
+              <Box
+                onClick={() => setCompletedExpanded(!completedExpanded)}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  mb: 1.5,
+                  px: 2,
+                  py: 1,
+                  bgcolor: scheduleColors.completedRow,
+                  borderRadius: 1,
+                  cursor: "pointer",
+                }}
+              >
+                {completedExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                <Typography variant="body2" fontWeight={500}>
+                  消化済み ({completedRounds.length} ラウンド)
+                </Typography>
+              </Box>
+              <Collapse in={completedExpanded}>
+                {completedRounds.map((round) => (
+                  <Card
+                    key={round.roundNumber}
+                    variant="outlined"
+                    sx={{
+                      mb: 1.5,
+                      bgcolor: scheduleColors.completedRow,
+                      opacity: 0.7,
+                    }}
+                  >
+                    <CardActionArea onClick={() => handleRoundClick(round)}>
+                      <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
+                        <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                          <Typography variant="subtitle2" sx={{ flex: 1 }}>
+                            ラウンド {round.roundNumber}
+                            {openedAt[`${round.roundNumber}`] && (
+                              <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                                {formatTime(openedAt[`${round.roundNumber}`])}
+                              </Typography>
+                            )}
+                          </Typography>
+                          <IconButton size="small" color="success" aria-label="未消化に戻す" sx={{ p: 0.5 }}>
+                            <CheckCircleIcon />
+                          </IconButton>
+                        </Box>
+                        {round.matches.map((match, idx) => (
+                          <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
+                            <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
+                              コート {idx + 1}
+                            </Typography>
+                            <Chip
+                              label={
+                                <>
+                                  <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                                    {match.pairA.player1}
+                                  </Box>
+                                  ,{" "}
+                                  <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                                    {match.pairA.player2}
+                                  </Box>
+                                </>
+                              }
+                              sx={{
+                                flex: 1,
+                                bgcolor: scheduleColors.teamA,
+                                fontSize: "1.25rem",
+                                fontWeight: 700,
+                                height: 36,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            />
+                            <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
+                              vs
+                            </Typography>
+                            <Chip
+                              label={
+                                <>
+                                  <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                                    {match.pairB.player1}
+                                  </Box>
+                                  ,{" "}
+                                  <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                                    {match.pairB.player2}
+                                  </Box>
+                                </>
+                              }
+                              sx={{
+                                flex: 1,
+                                bgcolor: scheduleColors.teamB,
+                                fontSize: "1.25rem",
+                                fontWeight: 700,
+                                height: 36,
+                                fontVariantNumeric: "tabular-nums",
+                              }}
+                            />
+                          </Box>
+                        ))}
+                        {round.restingPlayers && round.restingPlayers.length > 0 && (
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
+                            <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
+                              休憩
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                              {round.restingPlayers.join(", ")}
+                            </Typography>
+                          </Box>
+                        )}
+                      </CardContent>
+                    </CardActionArea>
+                  </Card>
+                ))}
+              </Collapse>
+            </>
+          )}
+          {nonCompletedRounds.map((round) => (
+            <Card
+              key={round.roundNumber}
+              variant="outlined"
               sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 0.5,
                 mb: 1.5,
-                px: 2,
-                py: 1,
-                bgcolor: scheduleColors.completedRow,
-                borderRadius: 1,
-                cursor: "pointer",
+                bgcolor: "background.paper",
               }}
             >
-              {completedExpanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-              <Typography variant="body2" fontWeight={500}>
-                消化済み ({completedRounds.length} ラウンド)
-              </Typography>
-            </Box>
-            <Collapse in={completedExpanded}>
-              {completedRounds.map((round) => (
-                <Card
-                  key={round.roundNumber}
-                  variant="outlined"
-                  sx={{
-                    mb: 1.5,
-                    bgcolor: scheduleColors.completedRow,
-                    opacity: 0.7,
-                  }}
-                >
-                  <CardActionArea onClick={() => handleRoundClick(round)}>
-                    <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-                      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                        <Typography variant="subtitle2" sx={{ flex: 1 }}>
-                          ラウンド {round.roundNumber}
-                          {openedAt[`${round.roundNumber}`] && (
-                            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                              {formatTime(openedAt[`${round.roundNumber}`])}
-                            </Typography>
-                          )}
+              <CardActionArea onClick={() => handleRoundClick(round)}>
+                <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
+                  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                    <Typography variant="subtitle2" sx={{ flex: 1 }}>
+                      ラウンド {round.roundNumber}
+                      {openedAt[`${round.roundNumber}`] && (
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                          {formatTime(openedAt[`${round.roundNumber}`])}
                         </Typography>
-                        <IconButton size="small" color="success" aria-label="未消化に戻す" sx={{ p: 0.5 }}>
-                          <CheckCircleIcon />
-                        </IconButton>
-                      </Box>
-                      {round.matches.map((match, idx) => (
-                        <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
-                          <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
-                            コート {idx + 1}
-                          </Typography>
-                          <Chip
-                            label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player2}</Box></>}
-                            sx={{ flex: 1, bgcolor: scheduleColors.teamA, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
-                          />
-                          <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
-                            vs
-                          </Typography>
-                          <Chip
-                            label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player2}</Box></>}
-                            sx={{ flex: 1, bgcolor: scheduleColors.teamB, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
-                          />
-                        </Box>
-                      ))}
-                      {round.restingPlayers && round.restingPlayers.length > 0 && (
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
-                          <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
-                            休憩
-                          </Typography>
-                          <Typography color="text.secondary" sx={{ fontSize: "1.25rem", fontWeight: 700 }}>
-                            {round.restingPlayers.join(", ")}
-                          </Typography>
-                        </Box>
                       )}
-                    </CardContent>
-                  </CardActionArea>
-                </Card>
-              ))}
-            </Collapse>
-          </>
-        )}
-        {nonCompletedRounds.map((round) => (
-          <Card
-            key={round.roundNumber}
-            variant="outlined"
-            sx={{
-              mb: 1.5,
-              bgcolor: "background.paper",
-            }}
-          >
-            <CardActionArea onClick={() => handleRoundClick(round)}>
-              <CardContent sx={{ py: 1.5, px: 2, "&:last-child": { pb: 1.5 } }}>
-                <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                  <Typography variant="subtitle2" sx={{ flex: 1 }}>
-                    ラウンド {round.roundNumber}
-                    {openedAt[`${round.roundNumber}`] && (
-                      <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                        {formatTime(openedAt[`${round.roundNumber}`])}
+                    </Typography>
+                    <IconButton size="small" color="default" aria-label="消化済みにする" sx={{ p: 0.5 }}>
+                      <CheckCircleOutlineIcon />
+                    </IconButton>
+                  </Box>
+                  {round.matches.map((match, idx) => (
+                    <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
+                      <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
+                        コート {idx + 1}
                       </Typography>
-                    )}
-                  </Typography>
-                  <IconButton size="small" color="default" aria-label="消化済みにする" sx={{ p: 0.5 }}>
-                    <CheckCircleOutlineIcon />
-                  </IconButton>
-                </Box>
-                {round.matches.map((match, idx) => (
-                  <Box key={idx} sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
-                    <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
-                      コート {idx + 1}
-                    </Typography>
-                    <Chip
-                      label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairA.player2}</Box></>}
-                      sx={{ flex: 1, bgcolor: scheduleColors.teamA, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
-                    />
-                    <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
-                      vs
-                    </Typography>
-                    <Chip
-                      label={<><Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player1}</Box>,{" "}<Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>{match.pairB.player2}</Box></>}
-                      sx={{ flex: 1, bgcolor: scheduleColors.teamB, fontSize: "1.25rem", fontWeight: 700, height: 36, fontVariantNumeric: "tabular-nums" }}
-                    />
-                  </Box>
-                ))}
-                {round.restingPlayers && round.restingPlayers.length > 0 && (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
-                    <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
-                      休憩
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ fontSize: "1.25rem", fontWeight: 700 }}>
-                      {round.restingPlayers.join(", ")}
-                    </Typography>
-                  </Box>
-                )}
-              </CardContent>
-            </CardActionArea>
-          </Card>
-        ))}
-      </Box>
-      {/* ラウンド追加ボタン */}
-      {onAddRound && (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-          <Button variant="outlined" startIcon={<AddIcon />} onClick={onAddRound}>
-            ラウンド追加
-          </Button>
+                      <Chip
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                              {match.pairA.player1}
+                            </Box>
+                            ,{" "}
+                            <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                              {match.pairA.player2}
+                            </Box>
+                          </>
+                        }
+                        sx={{
+                          flex: 1,
+                          bgcolor: scheduleColors.teamA,
+                          fontSize: "1.25rem",
+                          fontWeight: 700,
+                          height: 36,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      />
+                      <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        vs
+                      </Typography>
+                      <Chip
+                        label={
+                          <>
+                            <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                              {match.pairB.player1}
+                            </Box>
+                            ,{" "}
+                            <Box component="span" sx={{ display: "inline-block", minWidth: "2ch", textAlign: "center" }}>
+                              {match.pairB.player2}
+                            </Box>
+                          </>
+                        }
+                        sx={{
+                          flex: 1,
+                          bgcolor: scheduleColors.teamB,
+                          fontSize: "1.25rem",
+                          fontWeight: 700,
+                          height: 36,
+                          fontVariantNumeric: "tabular-nums",
+                        }}
+                      />
+                    </Box>
+                  ))}
+                  {round.restingPlayers && round.restingPlayers.length > 0 && (
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, py: 0.5 }}>
+                      <Typography variant="caption" sx={{ minWidth: 52, color: "text.secondary" }}>
+                        休憩
+                      </Typography>
+                      <Typography color="text.secondary" sx={{ fontSize: "1.25rem", fontWeight: 700 }}>
+                        {round.restingPlayers.join(", ")}
+                      </Typography>
+                    </Box>
+                  )}
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          ))}
         </Box>
-      )}
-
+        {/* ラウンド追加ボタン */}
+        {onAddRound && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+            <Button variant="outlined" startIcon={<AddIcon />} onClick={onAddRound}>
+              ラウンド追加
+            </Button>
+          </Box>
+        )}
       </Collapse>
 
       {/* ラウンド詳細ダイアログ */}
@@ -570,14 +640,18 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                     borderRadius: 1,
                     px: 0.5,
                   }),
-                  ...(changedPlayers.has(playerNum) && swapTarget !== playerNum && {
-                    outline: "2px solid",
-                    outlineColor: "warning.main",
-                    borderRadius: 1,
-                  }),
+                  ...(changedPlayers.has(playerNum) &&
+                    swapTarget !== playerNum && {
+                      outline: "2px solid",
+                      outlineColor: "warning.main",
+                      borderRadius: 1,
+                    }),
                 });
                 const onPlayerClick = isSelectedRoundEditable
-                  ? (playerNum: number) => (e: React.MouseEvent) => { e.stopPropagation(); handlePlayerTap(playerNum); }
+                  ? (playerNum: number) => (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      handlePlayerTap(playerNum);
+                    }
                   : undefined;
                 return (
                   <Box key={idx} sx={{ mb: 1 }}>
@@ -599,9 +673,13 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        <Box component="span" onClick={onPlayerClick?.(match.pairA.player1)} sx={playerNumberSx(match.pairA.player1)}>{match.pairA.player1}</Box>
+                        <Box component="span" onClick={onPlayerClick?.(match.pairA.player1)} sx={playerNumberSx(match.pairA.player1)}>
+                          {match.pairA.player1}
+                        </Box>
                         ,
-                        <Box component="span" onClick={onPlayerClick?.(match.pairA.player2)} sx={playerNumberSx(match.pairA.player2)}>{match.pairA.player2}</Box>
+                        <Box component="span" onClick={onPlayerClick?.(match.pairA.player2)} sx={playerNumberSx(match.pairA.player2)}>
+                          {match.pairA.player2}
+                        </Box>
                       </Box>
                       <Typography sx={{ fontSize: "1rem", color: "text.secondary", fontWeight: 600 }}>vs</Typography>
                       <Box
@@ -618,9 +696,13 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                           fontVariantNumeric: "tabular-nums",
                         }}
                       >
-                        <Box component="span" onClick={onPlayerClick?.(match.pairB.player1)} sx={playerNumberSx(match.pairB.player1)}>{match.pairB.player1}</Box>
+                        <Box component="span" onClick={onPlayerClick?.(match.pairB.player1)} sx={playerNumberSx(match.pairB.player1)}>
+                          {match.pairB.player1}
+                        </Box>
                         ,
-                        <Box component="span" onClick={onPlayerClick?.(match.pairB.player2)} sx={playerNumberSx(match.pairB.player2)}>{match.pairB.player2}</Box>
+                        <Box component="span" onClick={onPlayerClick?.(match.pairB.player2)} sx={playerNumberSx(match.pairB.player2)}>
+                          {match.pairB.player2}
+                        </Box>
                       </Box>
                     </Box>
                   </Box>
@@ -636,7 +718,14 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                       <Box key={p} sx={{ display: "inline-flex", alignItems: "center" }}>
                         <Typography
                           component="span"
-                          onClick={isSelectedRoundEditable ? (e: React.MouseEvent) => { e.stopPropagation(); handlePlayerTap(p); } : undefined}
+                          onClick={
+                            isSelectedRoundEditable
+                              ? (e: React.MouseEvent) => {
+                                  e.stopPropagation();
+                                  handlePlayerTap(p);
+                                }
+                              : undefined
+                          }
                           sx={{
                             fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" },
                             fontWeight: 700,
@@ -650,17 +739,21 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
                               borderRadius: 1,
                               px: 0.5,
                             }),
-                            ...(changedPlayers.has(p) && swapTarget !== p && {
-                              outline: "2px solid",
-                              outlineColor: "warning.main",
-                              borderRadius: 1,
-                            }),
+                            ...(changedPlayers.has(p) &&
+                              swapTarget !== p && {
+                                outline: "2px solid",
+                                outlineColor: "warning.main",
+                                borderRadius: 1,
+                              }),
                           }}
                         >
                           {p}
                         </Typography>
                         {i < displayRound.restingPlayers.length - 1 && (
-                          <Typography component="span" sx={{ fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" }, fontWeight: 700, color: "text.secondary", mx: 0.25 }}>
+                          <Typography
+                            component="span"
+                            sx={{ fontSize: { xs: "2rem", sm: "2.5rem", md: "3rem" }, fontWeight: 700, color: "text.secondary", mx: 0.25 }}
+                          >
                             ,
                           </Typography>
                         )}
@@ -689,7 +782,6 @@ export function ScheduleTable({ schedule, completedMatches, onToggleComplete, on
           </>
         )}
       </Dialog>
-
     </Paper>
   );
 }
