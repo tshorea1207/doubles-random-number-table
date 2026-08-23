@@ -95,7 +95,7 @@ export function useScheduleGenerator(strategyId: StrategyId = DEFAULT_STRATEGY_I
   }, [strategyId]);
 
   // 参加者変更後の残りラウンド再生成
-  const regenerate = useCallback((params: RegenerationParams) => {
+  const regenerate = useCallback((params: RegenerationParams): Promise<void> => {
     // 前回の生成を中断
     abortControllerRef.current?.abort();
     const controller = new AbortController();
@@ -107,7 +107,7 @@ export function useScheduleGenerator(strategyId: StrategyId = DEFAULT_STRATEGY_I
 
     const strategy = getStrategy(strategyId);
 
-    strategy.generateRemainingScheduleAsync(
+    return strategy.generateRemainingScheduleAsync(
       params,
       {
         onProgress: (progressUpdate) => {

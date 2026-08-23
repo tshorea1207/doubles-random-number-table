@@ -120,12 +120,12 @@ function App() {
 
   // プレイヤーを対象ラウンドで強制休憩 → 該当ラウンド以降を再生成
   const handleRestPlayers = useCallback(
-    (roundIndex: number, playerNums: number[]) => {
-      if (!schedule || !lastParams) return;
+    (roundIndex: number, playerNums: number[]): Promise<void> => {
+      if (!schedule || !lastParams) return Promise.resolve();
       isRegenerating.current = true;
       const completedRounds = schedule.rounds.slice(0, roundIndex);
       const remainingRoundsCount = schedule.rounds.length - roundIndex;
-      regenerate({
+      return regenerate({
         courtsCount: schedule.courts,
         completedRounds,
         activePlayers: schedule.activePlayers,

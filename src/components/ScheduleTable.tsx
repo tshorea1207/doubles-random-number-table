@@ -20,6 +20,7 @@ import {
   DialogActions,
   Button,
   Collapse,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
@@ -43,7 +44,7 @@ interface ScheduleTableProps {
   speechPitch: number;
   speechRate: number;
   onEditRound?: (roundIndex: number, editedRound: Round) => void;
-  onRestPlayers?: (roundIndex: number, playerNums: number[]) => void;
+  onRestPlayers?: (roundIndex: number, playerNums: number[]) => void | Promise<void>;
 }
 
 /** 色付きバッジでマッチを表示（デスクトップ用） */
@@ -216,6 +217,7 @@ export function ScheduleTable({
   // 休憩指定ダイアログの状態
   const [restDialogOpen, setRestDialogOpen] = useState(false);
   const [restSelected, setRestSelected] = useState<Set<number>>(new Set());
+  const [restSubmitting, setRestSubmitting] = useState(false);
 
   const restSlot = schedule.activePlayers.length - schedule.courts * 4;
 
@@ -226,6 +228,7 @@ export function ScheduleTable({
   };
 
   const handleRestDialogClose = () => {
+    if (restSubmitting) return;
     setRestDialogOpen(false);
     setRestSelected(new Set());
   };
@@ -239,17 +242,22 @@ export function ScheduleTable({
     });
   };
 
-  const handleConfirmRest = () => {
+  const handleConfirmRest = async () => {
     if (!selectedRound || !onRestPlayers || restSelected.size === 0) return;
     const roundIndex = schedule.rounds.findIndex((r) => r.roundNumber === selectedRound.roundNumber);
     if (roundIndex === -1) return;
     const playerNums = [...restSelected].sort((a, b) => a - b);
-    onRestPlayers(roundIndex, playerNums);
-    setRestDialogOpen(false);
-    setRestSelected(new Set());
-    setSwapTarget(null);
-    setEditedRound(null);
-    setChangedPlayers(new Set());
+    setRestSubmitting(true);
+    try {
+      await onRestPlayers(roundIndex, playerNums);
+    } finally {
+      setRestSubmitting(false);
+      setRestDialogOpen(false);
+      setRestSelected(new Set());
+      setSwapTarget(null);
+      setEditedRound(null);
+      setChangedPlayers(new Set());
+    }
   };
 
   // 再生成実行
@@ -862,14 +870,15 @@ export function ScheduleTable({
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleRestDialogClose}>キャンセル</Button>
+          <Button onClick={handleRestDialogClose} disabled={restSubmitting}>キャンセル</Button>
           <Button
             variant="contained"
             color="primary"
-            disabled={restSelected.size === 0}
+            disabled={restSelected.size === 0 || restSubmitting}
             onClick={handleConfirmRest}
+            sx={{ minWidth: 64 }}
           >
-            OK
+            {restSubmitting ? <CircularProgress size={20} color="inherit" /> : "OK"}
           </Button>
         </DialogActions>
       </Dialog>
