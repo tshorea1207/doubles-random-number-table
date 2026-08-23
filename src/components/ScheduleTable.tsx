@@ -43,6 +43,7 @@ interface ScheduleTableProps {
   speechPitch: number;
   speechRate: number;
   onEditRound?: (roundIndex: number, editedRound: Round) => void;
+  onRestPlayers?: (roundIndex: number, playerNums: number[]) => void;
 }
 
 /** 色付きバッジでマッチを表示（デスクトップ用） */
@@ -101,6 +102,7 @@ export function ScheduleTable({
   speechPitch,
   speechRate,
   onEditRound,
+  onRestPlayers,
 }: ScheduleTableProps) {
   const [selectedRound, setSelectedRound] = useState<Round | null>(null);
   const [expanded, setExpanded] = useState(true);
@@ -209,6 +211,45 @@ export function ScheduleTable({
     setEditedRound({ ...round, matches: newMatches, restingPlayers: newResting });
     setChangedPlayers((prev) => new Set([...prev, fromPlayer, toPlayer]));
     setSwapTarget(null);
+  };
+
+  // 休憩指定ダイアログの状態
+  const [restDialogOpen, setRestDialogOpen] = useState(false);
+  const [restSelected, setRestSelected] = useState<Set<number>>(new Set());
+
+  const restSlot = schedule.activePlayers.length - schedule.courts * 4;
+
+  const handleOpenRestDialog = () => {
+    const initial = displayRound?.restingPlayers ?? [];
+    setRestSelected(new Set(initial));
+    setRestDialogOpen(true);
+  };
+
+  const handleRestDialogClose = () => {
+    setRestDialogOpen(false);
+    setRestSelected(new Set());
+  };
+
+  const toggleRestPlayer = (p: number) => {
+    setRestSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  };
+
+  const handleConfirmRest = () => {
+    if (!selectedRound || !onRestPlayers || restSelected.size === 0) return;
+    const roundIndex = schedule.rounds.findIndex((r) => r.roundNumber === selectedRound.roundNumber);
+    if (roundIndex === -1) return;
+    const playerNums = [...restSelected].sort((a, b) => a - b);
+    onRestPlayers(roundIndex, playerNums);
+    setRestDialogOpen(false);
+    setRestSelected(new Set());
+    setSwapTarget(null);
+    setEditedRound(null);
+    setChangedPlayers(new Set());
   };
 
   // 再生成実行
@@ -619,12 +660,24 @@ export function ScheduleTable({
       >
         {selectedRound && displayRound && (
           <>
-            <DialogTitle>
-              ラウンド {selectedRound.roundNumber}
-              {openedAt[`${selectedRound.roundNumber}`] && (
-                <Typography variant="caption" color="text.secondary" display="block">
-                  Opened at {formatTime(openedAt[`${selectedRound.roundNumber}`])}
-                </Typography>
+            <DialogTitle sx={{ display: "flex", alignItems: "center", pr: 1 }}>
+              <Box sx={{ flex: 1 }}>
+                ラウンド {selectedRound.roundNumber}
+                {openedAt[`${selectedRound.roundNumber}`] && (
+                  <Typography variant="caption" color="text.secondary" display="block">
+                    Opened at {formatTime(openedAt[`${selectedRound.roundNumber}`])}
+                  </Typography>
+                )}
+              </Box>
+              {isSelectedRoundEditable && onRestPlayers && restSlot > 0 && (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={handleOpenRestDialog}
+                >
+                  休憩指定
+                </Button>
               )}
             </DialogTitle>
             <DialogContent sx={{ px: { xs: 1.5, sm: 3, md: 4 } }}>
@@ -784,6 +837,41 @@ export function ScheduleTable({
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* 休憩指定ダイアログ */}
+      <Dialog open={restDialogOpen} onClose={handleRestDialogClose} maxWidth="sm" fullWidth>
+        <DialogTitle>休憩指定</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, pt: 1 }}>
+            {schedule.activePlayers.map((p) => {
+              const selected = restSelected.has(p);
+              const atCap = restSelected.size >= restSlot && !selected;
+              return (
+                <Button
+                  key={p}
+                  variant={selected ? "contained" : "outlined"}
+                  disabled={atCap}
+                  onClick={() => toggleRestPlayer(p)}
+                  sx={{ minWidth: 48, minHeight: 48, fontSize: "1.2rem", fontWeight: 700 }}
+                >
+                  {p}
+                </Button>
+              );
+            })}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleRestDialogClose}>キャンセル</Button>
+          <Button
+            variant="contained"
+            color="primary"
+            disabled={restSelected.size === 0}
+            onClick={handleConfirmRest}
+          >
+            OK
+          </Button>
+        </DialogActions>
       </Dialog>
     </Paper>
   );

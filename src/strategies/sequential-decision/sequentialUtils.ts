@@ -34,6 +34,7 @@ export function shuffle<T>(arr: T[]): T[] {
  * @param restCounts - 各プレイヤーの現在の休憩回数（0-based index）
  * @param previousRestingPlayers - 前ラウンドの休憩者（連続休憩回避用、省略可）
  * @param fixedPairs - 固定ペアの配列（固定ペア分断防止用、省略可）
+ * @param forcePlayers - 強制的に休憩させるプレイヤー番号の配列（ユーザー指定、省略可）
  * @returns 休憩者のプレイヤー番号配列（昇順）
  */
 export function selectRestingPlayers(
@@ -41,9 +42,25 @@ export function selectRestingPlayers(
   restCount: number,
   restCounts: number[],
   previousRestingPlayers?: number[],
-  fixedPairs?: FixedPair[]
+  fixedPairs?: FixedPair[],
+  forcePlayers?: number[]
 ): number[] {
   if (restCount === 0) return [];
+
+  if (forcePlayers && forcePlayers.length > 0) {
+    const validForced = forcePlayers.filter(p => allPlayers.includes(p));
+    if (validForced.length >= restCount) {
+      return validForced.slice(0, restCount).sort((a, b) => a - b);
+    }
+    if (validForced.length > 0) {
+      const forcedSet = new Set(validForced);
+      const remaining = allPlayers.filter(p => !forcedSet.has(p));
+      const others = selectRestingPlayers(
+        remaining, restCount - validForced.length, restCounts, previousRestingPlayers, fixedPairs
+      );
+      return [...others, ...validForced].sort((a, b) => a - b);
+    }
+  }
 
   const prevRestSet = new Set(previousRestingPlayers ?? []);
 

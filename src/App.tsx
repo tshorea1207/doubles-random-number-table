@@ -118,6 +118,26 @@ function App() {
     [schedule, lastParams, regenerate],
   );
 
+  // プレイヤーを対象ラウンドで強制休憩 → 該当ラウンド以降を再生成
+  const handleRestPlayers = useCallback(
+    (roundIndex: number, playerNums: number[]) => {
+      if (!schedule || !lastParams) return;
+      isRegenerating.current = true;
+      const completedRounds = schedule.rounds.slice(0, roundIndex);
+      const remainingRoundsCount = schedule.rounds.length - roundIndex;
+      regenerate({
+        courtsCount: schedule.courts,
+        completedRounds,
+        activePlayers: schedule.activePlayers,
+        remainingRoundsCount,
+        weights: lastParams.weights,
+        fixedPairs: schedule.fixedPairs,
+        forceRestPlayers: playerNums,
+      });
+    },
+    [schedule, lastParams, regenerate],
+  );
+
   return (
     <>
       {/* ヘッダー */}
@@ -177,6 +197,7 @@ function App() {
               speechPitch={speechPitch}
               speechRate={speechRate}
               onEditRound={!isGenerating && schedule && lastParams ? handleEditRound : undefined}
+              onRestPlayers={!isGenerating && schedule && lastParams ? handleRestPlayers : undefined}
             />
             {schedule && (
               <Box sx={{ visibility: isGenerating ? "hidden" : "visible" }}>

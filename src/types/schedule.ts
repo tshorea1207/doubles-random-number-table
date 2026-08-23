@@ -128,6 +128,7 @@ export interface RegenerationParams {
   remainingRoundsCount: number;   // 再生成するラウンド数
   weights: { w1: number; w2: number; w3: number };
   fixedPairs: FixedPair[];
+  forceRestPlayers?: number[];    // 再生成初回ラウンドで強制休憩させるプレイヤー番号の配列
 }
 
 /**

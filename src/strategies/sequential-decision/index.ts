@@ -168,7 +168,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
   }
 
   async generateRemainingScheduleAsync(params: RegenerationParams, callbacks: ProgressCallbacks, signal?: AbortSignal): Promise<Schedule> {
-    const { courtsCount, completedRounds, activePlayers, remainingRoundsCount, weights, fixedPairs } = params;
+    const { courtsCount, completedRounds, activePlayers, remainingRoundsCount, weights, fixedPairs, forceRestPlayers } = params;
 
     if (activePlayers.length < courtsCount * 4) {
       throw new Error(`参加者数（${activePlayers.length}人）がコート数（${courtsCount}面）に必要な${courtsCount * 4}人を下回っています`);
@@ -222,11 +222,28 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
       }
 
       const previousRound = allRounds[allRounds.length - 1];
+      const forcedRestPlayers = i === 0 ? forceRestPlayers : undefined;
       let round: Round;
       if (previousRound === undefined) {
-        // 消化済ラウンドなし: 固定配置で最初のラウンドを生成
-        round = this.createFirstRound(activePlayers, courtsCount);
-        round = { ...round, roundNumber };
+        if (forcedRestPlayers !== undefined && forcedRestPlayers.length > 0) {
+          // 消化済ラウンドなし + 強制休憩あり: 固定配置ではなく生成ロジックを使用
+          const syntheticPrevRound: Round = { roundNumber: 0, matches: [], restingPlayers: [] };
+          round = this.generateRound(
+            roundNumber,
+            activePlayers,
+            courtsCount,
+            pairHistory,
+            opponentHistory,
+            restCounts,
+            fixedPairs,
+            syntheticPrevRound,
+            forcedRestPlayers,
+          );
+        } else {
+          // 消化済ラウンドなし: 固定配置で最初のラウンドを生成
+          round = this.createFirstRound(activePlayers, courtsCount);
+          round = { ...round, roundNumber };
+        }
       } else {
         round = this.generateRound(
           roundNumber,
@@ -237,6 +254,7 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
           restCounts,
           fixedPairs,
           previousRound,
+          forcedRestPlayers,
         );
       }
       allRounds.push(round);
@@ -299,12 +317,13 @@ export class SequentialDecisionStrategy implements ScheduleStrategy {
     restCounts: number[],
     fixedPairs: FixedPair[],
     previousRound: Round,
+    forcedRestPlayers?: number[],
   ): Round {
     const playingCount = courtsCount * 4;
     const restCount = allPlayers.length - playingCount;
     const previousOpponents = extractPreviousOpponents(previousRound);
 
-    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRound.restingPlayers, fixedPairs);
+    const restingPlayers = selectRestingPlayers(allPlayers, restCount, restCounts, previousRound.restingPlayers, fixedPairs, forcedRestPlayers);
     const playingPlayers = allPlayers.filter((p) => !restingPlayers.includes(p));
     const sortedResting = restingPlayers.slice().sort((a, b) => a - b);
 
