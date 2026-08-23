@@ -332,7 +332,7 @@ export function ScheduleTable({
                     sx={{
                       cursor: "pointer",
                       userSelect: "none",
-                      height: { sm: "5.0rem", lg: "2.0rem" },
+                      height: { sm: "5.0rem", lg: "4.0rem" },
                       bgcolor: scheduleColors.completedRow,
                       "&:hover": { bgcolor: scheduleColors.completedRowHover },
                     }}
@@ -364,7 +364,7 @@ export function ScheduleTable({
                       sx={{
                         cursor: "pointer",
                         userSelect: "none",
-                        height: { sm: "5.0rem", lg: "2.0rem" },
+                        height: { sm: "5.0rem", lg: "4.0rem" },
                         backgroundColor: scheduleColors.completedRow,
                         opacity: 0.7,
                         "&:hover": {
@@ -408,7 +408,7 @@ export function ScheduleTable({
                     sx={{
                       cursor: "pointer",
                       userSelect: "none",
-                      height: { sm: "5.0rem", lg: "2.0rem" },
+                      height: { sm: "5.0rem", lg: "4.0rem" },
                       "&:hover": {
                         backgroundColor: scheduleColors.rowHover,
                       },
